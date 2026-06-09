@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Set-Location \"c:\\\\Users\\\\MSII\\\\Documents\\\\MeInc\"; $proc = Start-Process -FilePath \"npm\" -ArgumentList \"run\",\"dev\" -WorkingDirectory \"c:\\\\Users\\\\MSII\\\\Documents\\\\MeInc\" -PassThru -WindowStyle Hidden; Start-Sleep 4; if \\($proc.HasExited\\) { \"Process exited with: $\\($proc.ExitCode\\)\" } else { \"Dev server running \\(PID $\\($proc.Id\\)\\)\"; $proc.Kill\\(\\) })"
+    ]
+  }
+}
