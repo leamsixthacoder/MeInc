@@ -124,6 +124,40 @@ export const INITIAL_DATA = {
     { id: 'sb_other',       category: 'Other',               monthlyBudget: 0     },
   ],
 
+  // ── CHECKLIST ITEMS (dynamic no-negotiables) ─────────────────────────────
+  checklistItems: {
+    morning: [
+      { id: 'cm_wake',   key: 'wake5am',    label: 'Wake at 5:00 AM (no snooze)' },
+      { id: 'cm_pray',   key: 'prayer',     label: 'Prayer — 15 min' },
+      { id: 'cm_med',    key: 'meditation', label: 'Meditation + breathing — 10 min' },
+      { id: 'cm_bible',  key: 'bible',      label: 'Bible / words of knowledge — 10 min' },
+      { id: 'cm_ex',     key: 'exercise',   label: '20 pushups + 20 situps + stretch' },
+      { id: 'cm_water',  key: 'water',      label: '500 ml water' },
+      { id: 'cm_shower', key: 'shower',     label: 'Shower & dress' },
+      { id: 'cm_kpi',    key: 'kpiReview',  label: 'Review tasks & Daily KPI dashboard' },
+      { id: 'cm_mkt',    key: 'marketPrep', label: 'Study market + trading plan (45 min)' },
+      { id: 'cm_gym',    key: 'gym',        label: 'Gym workout (Road to Dunk Again)' },
+    ],
+    evening: [
+      { id: 'ce_shower', key: 'shower',       label: 'Shower & dress' },
+      { id: 'ce_dinner', key: 'dinner',       label: 'Dinner — tracked' },
+      { id: 'ce_task',   key: 'taskReview',   label: 'Review tasks completed / pending' },
+      { id: 'ce_lang',   key: 'languageStudy',label: 'Language study (30 min weekdays)' },
+      { id: 'ce_cert',   key: 'certStudy',    label: 'Certification study (90 min)' },
+      { id: 'ce_pri',    key: 'priorities',   label: "Set tomorrow's priorities" },
+      { id: 'ce_pray',   key: 'prayer',       label: 'Prayer / meditation' },
+      { id: 'ce_ns',     key: 'noScreens',    label: 'No screens 15 min before bed' },
+      { id: 'ce_bed',    key: 'bed1030',      label: 'In bed by 10:30 PM' },
+    ],
+    kpis: [
+      { id: 'ck_wo',  key: 'workout',       label: 'Workout completed' },
+      { id: 'ck_en',  key: 'englishStudy',  label: 'English study (30 min)' },
+      { id: 'ck_cs',  key: 'certStudy',     label: 'Certification study (90 min)' },
+      { id: 'ck_tr',  key: 'tradingTarget', label: 'Trading profit target (≥$200)' },
+      { id: 'ck_dp',  key: 'debtPayment',   label: 'Debt payment made' },
+    ]
+  },
+
   // ── DAILY LOGS (checklist + all daily metrics) ────────────────────────────
   dailyLogs: [],
 
@@ -181,6 +215,168 @@ export const INITIAL_DATA = {
         'Scotiabank ≤ 2,200,000 DOP',
         'Options account: $15,000',
         'Non-APEC income ≥ 52,700 DOP/mo (replace APEC 100%)'
+      ]
+    }
+  ],
+
+  // ── SOPs ──────────────────────────────────────────────────────────────────
+  sops: [
+    {
+      id: 'morning', icon: '🌅', title: 'Morning Routine', color: '#4fa3f7',
+      description: 'Start: 5:00 AM · End: ~8:10 AM · No snooze, no phone scrolling on wake',
+      alertType: 'info',
+      sections: [
+        {
+          id: 'ms', type: 'steps', title: 'Step by Step',
+          items: [
+            { id: 'ms1',  time: '5:00',       title: 'Wake without snooze',                   detail: 'Immediate sit up, feet on floor. No phone scrolling.' },
+            { id: 'ms2',  time: '5:00–5:15',  title: 'Prayer (15 min)',                       detail: 'Structured prayer: gratitude, intercession, guidance for the day.' },
+            { id: 'ms3',  time: '5:15–5:25',  title: 'Meditation + Breathing (10 min)',       detail: 'Box breathing or mindfulness. Clear mental clutter.' },
+            { id: 'ms4',  time: '5:25–5:35',  title: 'Bible / Words of Knowledge (10 min)',   detail: 'Read assigned passage, journal one verse + application.' },
+            { id: 'ms5',  time: '5:35–5:40',  title: '20 pushups + 20 situps + stretch',      detail: 'No excuses. Use proper form. Stretch hamstrings, shoulders, hips.' },
+            { id: 'ms6',  time: '5:40–5:45',  title: 'Hydrate — 500 ml water',               detail: 'Drink full glass. Optional: add lemon or electrolytes.' },
+            { id: 'ms7',  time: '5:45–6:00',  title: 'Shower & dress (15 min)',               detail: 'Cold or warm. Dress for gym (if gym day) or work.' },
+            { id: 'ms8',  time: '6:00–6:10',  title: 'Review tasks & Daily KPI dashboard',    detail: 'Identify top 3 priorities. Check weight, debt, trading status.' },
+            { id: 'ms9',  time: '6:10–6:55',  title: 'Study market + trading plan (45 min)',  detail: 'Analyze charts. Write daily plan: entry, exit, stop loss. Check Lucid rules.' },
+            { id: 'ms10', time: '6:55–7:55',  title: 'Gym workout (1 hour)',                  detail: 'Follow Road to Dunk Again program. See schedule below.' },
+            { id: 'ms11', time: '7:55–8:10',  title: 'Shower, dress, breakfast (15 min)',     detail: 'Protein + oats. Eat after shower.' },
+          ]
+        },
+        {
+          id: 'mg', type: 'grid', title: 'Gym Schedule — Road to Dunk Again',
+          items: [
+            { id: 'mg1', primary: 'Monday',    secondary: 'Lower Strength + Tendon',  meta: 'Trap Bar Deadlift 4×5, Bulgarian Split Squat 3×8, RDL 3×8, Step-Ups 3×10, Seated Calf Raise 4×15, Tib Raises 3×20' },
+            { id: 'mg2', primary: 'Tuesday',   secondary: 'Upper Strength',           meta: 'Pull-Ups 4 sets, Incline DB Bench 4×6–8, Barbell Rows 4×8, Shoulder Press 3×10, Face Pulls 3×15, Farmer Carries 3 rounds' },
+            { id: 'mg3', primary: 'Wednesday', secondary: 'Athletic Conditioning',    meta: 'Bike Intervals 20–30 min (1 min hard / 2 min easy), Hip · Ankle · Calf · Hamstring Mobility' },
+            { id: 'mg4', primary: 'Thursday',  secondary: 'Lower Explosive',          meta: 'Box Jumps 4×3, Broad Jumps 4×3, Goblet Squat 3×10, Single-Leg RDL 3×10, Hip Thrust 4×8, Isometric Calf Holds 3×30s' },
+            { id: 'mg5', primary: 'Friday',    secondary: 'Upper Athletic',           meta: 'Weighted Pull-Ups 4×6–8, Flat Bench 4×5, Push Press 3×5, DB Rows 3×10, Lateral Raises 3×15, Med Ball Slams 3×10' },
+            { id: 'mg6', primary: 'Saturday',  secondary: 'Mobility + Court Work',   meta: 'Form shooting, Layups, Footwork drills, Light approaches, 5–8 quality approach jumps' },
+            { id: 'mg7', primary: 'Sunday',    secondary: 'Recovery',                meta: 'Walking, Stretching, Hydration, Sleep 8.5–9 hours' },
+          ]
+        },
+        {
+          id: 'ml', type: 'list', title: 'Success Criteria',
+          items: [
+            { id: 'ml1', text: 'Wake at 5:00 AM without snooze ≥90% of days' },
+            { id: 'ml2', text: 'Weight trends down 1 lb/week' },
+            { id: 'ml3', text: 'Trading plan written before market open' },
+            { id: 'ml4', text: 'Daily KPI dashboard reviewed before 7:00 AM' },
+            { id: 'ml5', text: 'Gym compliance ≥85% (7 days/week)' },
+          ]
+        }
+      ]
+    },
+    {
+      id: 'evening', icon: '🌙', title: 'Evening Routine', color: '#c084fc',
+      description: 'Time Block: 7:00 PM – 10:30 PM · In bed by 10:30 PM ≥90% of nights',
+      alertType: 'info',
+      sections: [
+        {
+          id: 'es', type: 'steps', title: 'Step by Step',
+          items: [
+            { id: 'es1',  time: '7:00–7:15', title: 'Shower & dress (15 min)',               detail: 'Warm shower to signal body wind-down. Change into comfortable clothes.' },
+            { id: 'es2',  time: '7:15–7:30', title: 'Dinner (15 min)',                       detail: 'Eat without screens. Protein + vegetables. Log in nutrition tracker.' },
+            { id: 'es3',  time: '7:30–7:40', title: 'Review tasks (10 min)',                 detail: 'Mark done items. Move unfinished to tomorrow. Note any blockers.' },
+            { id: 'es4',  time: '7:40–8:10', title: 'Language study (30 min) — weekdays',   detail: 'Active study: speaking, listening, or vocabulary.' },
+            { id: 'es5',  time: '8:10–9:40', title: 'Personal work (1.5 hours)',             detail: 'Deep work on certification, trading journal, or options study.' },
+            { id: 'es6',  time: '9:40–9:55', title: "Set tomorrow's priorities (15 min)",   detail: 'Write top 3 priorities. Assign time blocks.' },
+            { id: 'es7',  time: '9:55–10:10',title: 'Prayer / Meditation (15 min)',          detail: 'Evening prayer. Meditation to release stress.' },
+            { id: 'es8',  time: '10:10–10:25',title: 'No screens before bed (15 min)',       detail: 'Read physical book, journal, or stretch. NO phone/TV/computer.' },
+            { id: 'es9',  time: '10:25–10:30',title: 'Prepare for sleep',                   detail: 'Brush teeth, set 5:00 AM alarm, place phone away from bed.' },
+            { id: 'es10', time: '10:30',      title: 'In bed, lights out',                   detail: 'Target 10:30 PM for 6.5 hours of sleep.' },
+          ]
+        },
+        {
+          id: 'ew', type: 'list', title: 'Personal Work Ideas (8:10–9:40 PM)',
+          items: [
+            { id: 'ew1', text: 'Certification study (AI-900 or SC-300) — modules, notes, practice exams' },
+            { id: 'ew2', text: 'Trading journal — review Lucid Trading trades, document mistakes, update stats' },
+            { id: 'ew3', text: 'Debt tracking — update snowball, plan extra payments' },
+            { id: 'ew4', text: 'Options education — paper trading review, learn new strategy' },
+            { id: 'ew5', text: 'Side business — any project that generates non-APEC income' },
+          ]
+        },
+        {
+          id: 'ewknd', type: 'grid', title: 'Weekend Adjustments',
+          items: [
+            { id: 'ewk1', primary: 'Saturday', secondary: 'Language optional (30 min or rest)', meta: '1.5 hrs personal work (flexible)' },
+            { id: 'ewk2', primary: 'Sunday',   secondary: 'Language optional or week review',   meta: '1 hr personal work, focus on week planning' },
+          ]
+        }
+      ]
+    },
+    {
+      id: 'travel', icon: '✈️', title: 'Travel Guide', color: '#e5a820',
+      description: 'Travel is NOT an excuse to break SOPs. Execute all core routines even while away.',
+      alertType: 'warning',
+      sections: [
+        {
+          id: 'tb', type: 'list', title: '48 Hours Before Departure',
+          items: [
+            { id: 'tb1', text: 'Check if hotel/gym has a fitness center. If not, plan bodyweight circuit.' },
+            { id: 'tb2', text: 'Verify internet reliability for trading. Bring mobile hotspot as backup.' },
+            { id: 'tb3', text: 'Download offline study materials (certification videos, language podcasts).' },
+            { id: 'tb4', text: 'Notify Lucid Trading if travelling to restricted jurisdiction (check platform).' },
+            { id: 'tb5', text: 'Print or save: Morning_Routine, Daily_CEO_Checklist, emergency contacts.' },
+          ]
+        },
+        {
+          id: 'tp_gym', type: 'list', title: '💪 Gym & Active Recovery Pack',
+          items: [
+            { id: 'tpg1', text: 'Resistance bands (light/medium/heavy)' },
+            { id: 'tpg2', text: 'Running shoes' },
+            { id: 'tpg3', text: 'Workout clothes (2–3 sets, quick-dry)' },
+            { id: 'tpg4', text: 'Jump rope (optional)' },
+            { id: 'tpg5', text: 'Foam roller / lacrosse ball (travel size)' },
+          ]
+        },
+        {
+          id: 'tp_trade', type: 'list', title: '📈 Trading & Market Prep Pack',
+          items: [
+            { id: 'tpt1', text: 'Laptop with Lucid Trading platform installed' },
+            { id: 'tpt2', text: 'Charger + universal plug adapter' },
+            { id: 'tpt3', text: 'Mobile hotspot / phone tethering' },
+            { id: 'tpt4', text: 'Economic calendar bookmarked' },
+            { id: 'tpt5', text: 'Trade journal (digital offline mode)' },
+          ]
+        },
+        {
+          id: 'tp_cert', type: 'list', title: '📚 Certification & Language Pack',
+          items: [
+            { id: 'tpc1', text: 'Laptop/tablet' },
+            { id: 'tpc2', text: 'Noise-cancelling headphones' },
+            { id: 'tpc3', text: 'Anki app with downloaded decks' },
+            { id: 'tpc4', text: 'Tutor session pre-scheduled (video call)' },
+            { id: 'tpc5', text: 'PDF study guides offline' },
+          ]
+        },
+        {
+          id: 'tc', type: 'list', title: 'Hotel Room Bodyweight Circuit (No Gym)',
+          items: [
+            { id: 'tc1', text: '20 pushups + 20 situps + 20 squats × 3 rounds' },
+            { id: 'tc2', text: 'Band rows for back' },
+            { id: 'tc3', text: 'Band overhead press' },
+            { id: 'tc4', text: '15 min jump rope or high knees' },
+          ]
+        },
+        {
+          id: 'ta', type: 'steps', title: 'First 24 Hours Upon Arrival',
+          items: [
+            { id: 'ta1', time: 'Arrive', title: 'Unpack trading setup',         detail: 'Test internet connection, Lucid Trading platform access.' },
+            { id: 'ta2', time: 'Day 1',  title: 'Locate gym or plan circuit',   detail: 'Find hotel gym or identify bodyweight area.' },
+            { id: 'ta3', time: 'Day 1',  title: 'Grocery run',                  detail: 'Buy: Greek yogurt, oats, fruit, eggs, bottled water.' },
+            { id: 'ta4', time: 'Night',  title: 'Set alarms for 5:00 AM local', detail: 'Account for time zone change.' },
+            { id: 'ta5', time: 'Day 1',  title: 'Update checklist',             detail: 'Note any location-specific adjustments (gym hours, local numbers).' },
+          ]
+        },
+        {
+          id: 'td', type: 'list', title: 'Post-Trip Debrief (within 2 days)',
+          items: [
+            { id: 'td1', text: 'Log any travel disruptions in Decision Log' },
+            { id: 'td2', text: 'Note what packing items were missing or unnecessary — update list' },
+            { id: 'td3', text: 'Catch up on any missed study/trading days using the weekend' },
+          ]
+        }
       ]
     }
   ],

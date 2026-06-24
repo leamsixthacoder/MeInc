@@ -12,7 +12,8 @@ import Decisions      from './pages/Decisions.jsx'
 import WeeklyOps      from './pages/WeeklyOps.jsx'
 import QBR            from './pages/QBR.jsx'
 import SOPs           from './pages/SOPs.jsx'
-import Settings       from './pages/Settings.jsx'
+import Settings          from './pages/Settings.jsx'
+import ChecklistSettings from './pages/ChecklistSettings.jsx'
 
 const NAV_ITEMS = [
   { path: '/',              label: 'Dashboard',        icon: '⚡' },
@@ -117,9 +118,10 @@ export default function App() {
               <Route path="/decisions"      element={<Decisions />} />
               <Route path="/weekly-ops"     element={<WeeklyOps />} />
               <Route path="/qbr"            element={<QBR />} />
-              <Route path="/sops"           element={<SOPs />} />
-              <Route path="/sops/:slug"     element={<SOPs />} />
-              <Route path="/settings"       element={<Settings />} />
+              <Route path="/sops"               element={<SOPs />} />
+              <Route path="/sops/:slug"         element={<SOPs />} />
+              <Route path="/settings"           element={<Settings />} />
+              <Route path="/checklist-settings" element={<ChecklistSettings />} />
             </Routes>
           </main>
         </div>

@@ -1,216 +1,442 @@
 import React, { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useApp } from '../store/AppContext.jsx'
 
-function SopStep({ time, title, detail, color = 'var(--blue)' }) {
+function newSectionId() { return 'sec_' + Math.random().toString(36).slice(2, 8) }
+function newItemId()    { return 'itm_' + Math.random().toString(36).slice(2, 8) }
+
+// ── Section renderer ──────────────────────────────────────────────────────────
+function SectionView({ section, sopColor, editMode, onUpdateSection, onDeleteSection }) {
+  const [newItem, setNewItem] = useState(null)
+  const [editItem, setEditItem] = useState(null)
+
+  function addItem(item) {
+    const updated = { ...section, items: [...section.items, { id: newItemId(), ...item }] }
+    onUpdateSection(updated)
+    setNewItem(null)
+  }
+  function saveEditItem(item) {
+    const updated = { ...section, items: section.items.map(i => i.id === item.id ? item : i) }
+    onUpdateSection(updated)
+    setEditItem(null)
+  }
+  function deleteItem(id) {
+    const updated = { ...section, items: section.items.filter(i => i.id !== id) }
+    onUpdateSection(updated)
+  }
+
   return (
-    <div className="sop-step">
-      <div className="sop-step-time" style={{ color }}>{time}</div>
-      <div className="sop-step-content">
-        <div className="sop-step-title">{title}</div>
-        {detail && <div className="sop-step-detail">{detail}</div>}
-      </div>
-    </div>
-  )
-}
-
-function MorningRoutine() {
-  return (
-    <div className="sop-content">
-      <div className="alert alert-info section"><span>⏰</span><div>Start: 5:00 AM · End: ~8:10 AM (gym days) · Key rule: No snooze, no phone scrolling on wake</div></div>
-      <h2>Morning Routine — Step by Step</h2>
-      {[
-        { time: '5:00–5:00', title: 'Wake without snooze', detail: 'Immediate sit up, feet on floor. No phone scrolling.' },
-        { time: '5:00–5:15', title: 'Prayer (15 min)', detail: 'Structured prayer: gratitude, intercession, guidance for the day.' },
-        { time: '5:15–5:25', title: 'Meditation + Breathing (10 min)', detail: 'Box breathing or mindfulness. Clear mental clutter.' },
-        { time: '5:25–5:35', title: 'Bible / Words of Knowledge (10 min)', detail: 'Read assigned passage, journal one verse + application.' },
-        { time: '5:35–5:40', title: '20 pushups + 20 situps + stretch (5 min)', detail: 'No excuses. Use proper form. Stretch hamstrings, shoulders, hips.' },
-        { time: '5:40–5:45', title: 'Hydrate — 500 ml water', detail: 'Drink full glass. Optional: add lemon or electrolytes.' },
-        { time: '5:45–6:00', title: 'Shower & dress (15 min)', detail: 'Cold or warm. Dress for gym (if gym day) or work.' },
-        { time: '6:00–6:10', title: 'Review tasks & Daily KPI dashboard (10 min)', detail: 'Open task manager. Identify top 3 priorities. Check weight, debt progress, trading status.' },
-        { time: '6:10–6:55', title: 'Study market strategies + trading plan (45 min)', detail: 'Analyze charts (futures). Write daily trading plan: entry, exit, stop loss. Check Lucid Trading eval rules.' },
-        { time: '6:55–7:55', title: 'Gym workout (1 hour) — Wed–Sun only', detail: 'Mon & Tue = active recovery (walk/stretch). Follow current fitness split.' },
-        { time: '7:55–8:10', title: 'Shower, dress, prepare breakfast (15 min)', detail: 'Protein + oats. Eat after shower.' },
-      ].map(s => <SopStep key={s.time} {...s} />)}
-
-      <h2>Gym Schedule</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '.5rem' }}>
-        {[
-          ['Wednesday', 'Upper Strength',           'Bench, Pullups, OHP, Rows, Dips'],
-          ['Thursday',  'Lower Strength',            'Squat, Deadlift, Leg Press, Curls, Calves'],
-          ['Friday',    'Upper Hypertrophy',         'Incline DB, Lat Pulldown, Laterals, Triceps, Biceps'],
-          ['Saturday',  'Lower Hypertrophy + Core',  'Goblet Squat, RDL, Lunges, Extensions, Leg Raises'],
-          ['Sunday',    'Full Body / Cardio',        '5–6 compound + 30 min steady state'],
-          ['Monday',    'Active Recovery',           '30 min walk + stretching'],
-          ['Tuesday',   'Active Recovery',           'Mobility or yoga'],
-        ].map(([day, type, notes]) => (
-          <div key={day} style={{ padding: '.5rem .7rem', background: 'var(--bg-2)', borderRadius: 4 }}>
-            <div className="font-bold text-sm">{day}</div>
-            <div className="text-xs text-blue">{type}</div>
-            <div className="text-xs text-muted">{notes}</div>
+    <div style={{ marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.6rem' }}>
+        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-1)', flex: 1, margin: 0 }}>{section.title}</h2>
+        {editMode && (
+          <div style={{ display: 'flex', gap: '.35rem' }}>
+            <button className="btn btn-primary btn-xs"
+              onClick={() => setNewItem(section.type === 'steps' ? { time: '', title: '', detail: '' } : section.type === 'grid' ? { primary: '', secondary: '', meta: '' } : { text: '' })}>
+              + Item
+            </button>
+            <button className="btn btn-danger btn-xs" onClick={() => window.confirm('Delete this section?') && onDeleteSection(section.id)}>✕ Section</button>
           </div>
-        ))}
+        )}
       </div>
 
-      <h2>Success Criteria</h2>
-      <ul>
-        <li>Wake at 5:00 AM without snooze ≥90% of days</li>
-        <li>Weight trends down 1 lb/week</li>
-        <li>Trading plan written before market open</li>
-        <li>Daily KPI dashboard reviewed before 7:00 AM</li>
-        <li>Gym compliance ≥85% (Wed–Sun)</li>
-      </ul>
-    </div>
-  )
-}
-
-function EveningRoutine() {
-  return (
-    <div className="sop-content">
-      <div className="alert alert-info section"><span>🌙</span><div>Time Block: 7:00 PM – 10:30 PM · Key rule: In bed by 10:30 PM ≥90% of nights</div></div>
-      <h2>Evening Routine — Step by Step</h2>
-      {[
-        { time: '7:00–7:15', title: 'Shower & dress (15 min)', detail: 'Warm shower to signal body wind-down. Change into comfortable, clean clothes.' },
-        { time: '7:15–7:30', title: 'Dinner (15 min)', detail: 'Eat without screens. Focus on protein + vegetables. Log in nutrition tracker.' },
-        { time: '7:30–7:40', title: 'Review tasks completed/pending (10 min)', detail: 'Mark done items. Move unfinished to tomorrow. Note any blockers.' },
-        { time: '7:40–8:10', title: 'Language study session (30 min) — weekdays only', detail: 'Active study: speaking, listening, or vocabulary. See Language_Study_Session SOP.' },
-        { time: '8:10–9:40', title: 'Personal work (1.5 hours)', detail: 'Deep work on certification (AI-900 / SC-300), trading journal review, or options study. No distractions.' },
-        { time: '9:40–9:55', title: 'Set tomorrow\'s priorities & tasks (15 min)', detail: 'Write top 3 priorities for tomorrow. Assign time blocks. Ensure Morning Routine can start smoothly.' },
-        { time: '9:55–10:10', title: 'Prayer / Meditation (15 min)', detail: 'Evening prayer (thanksgiving, examen). Meditation to release stress.' },
-        { time: '10:10–10:25', title: 'No screens before bed (15–25 min)', detail: 'Read physical book, journal, or stretch. NO phone, TV, or computer.' },
-        { time: '10:25–10:30', title: 'Prepare for sleep', detail: 'Brush teeth, set alarm for 5:00 AM, place phone away from bed.' },
-        { time: '10:30', title: 'In bed, lights out', detail: 'Target sleep by 10:30 PM for 6.5 hours (wake at 5:00 AM).' },
-      ].map(s => <SopStep key={s.time} {...s} color="var(--purple)" />)}
-
-      <h2>Personal Work Ideas (8:10–9:40 PM)</h2>
-      <ul>
-        <li>Certification study (AI-900 or SC-300) — watch modules, take notes, do practice exams</li>
-        <li>Trading journal — review today's Lucid Trading trades, document mistakes, update stats</li>
-        <li>Debt tracking — update snowball spreadsheet, plan extra payments</li>
-        <li>Options education — paper trading review, learn new strategy</li>
-        <li>Side business — any project that generates non-APEC income</li>
-      </ul>
-
-      <h2>Weekend Adjustments</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem' }}>
-        {[['Saturday', 'Language optional (30 min or rest)', '1.5 hrs personal work (flexible)'],
-          ['Sunday',   'Language optional or review week',   '1 hr personal work, focus on week planning']
-        ].map(([day, lang, work]) => (
-          <div key={day} style={{ padding: '.5rem .7rem', background: 'var(--bg-2)', borderRadius: 4 }}>
-            <div className="font-bold text-sm">{day}</div>
-            <div className="text-xs text-muted">{lang}</div>
-            <div className="text-xs text-muted">{work}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function TravelGuide() {
-  return (
-    <div className="sop-content">
-      <div className="alert alert-warning section"><span>✈️</span><div>Travel is NOT an excuse to break SOPs. Execute all core routines even while away.</div></div>
-
-      <h2>48 Hours Before Departure</h2>
-      <ul>
-        <li>Check if hotel/gym has a fitness center. If not, plan bodyweight circuit.</li>
-        <li>Verify internet reliability for trading. Bring mobile hotspot as backup.</li>
-        <li>Download offline study materials (certification videos, language podcasts, trading journals).</li>
-        <li>Notify Lucid Trading if travelling to restricted jurisdiction (check platform).</li>
-        <li>Print or save: Morning_Routine, Daily_CEO_Checklist, emergency contacts.</li>
-      </ul>
-
-      <h2>What to Pack — Core Execution Items</h2>
-      {[
-        {
-          category: 'Morning / Spiritual', color: 'var(--purple)',
-          items: ['Bible (physical or app)', 'Prayer journal / notebook', 'Meditation app downloaded offline', 'Travel alarm clock', 'Earplugs / sleep mask'],
-        },
-        {
-          category: 'Gym & Active Recovery', color: 'var(--green)',
-          items: ['Resistance bands (light/medium/heavy)', 'Jump rope (optional)', 'Running shoes', 'Workout clothes (2–3 sets, quick-dry)', 'Foam roller / lacrosse ball (travel size)', 'Workout log (Google Sheets / notebook)'],
-        },
-        {
-          category: 'Trading & Market Prep', color: 'var(--blue)',
-          items: ['Laptop (with Lucid Trading platform installed)', 'Charger + universal plug adapter', 'Mobile hotspot / phone tethering', 'Economic calendar bookmarked', 'Trade journal (digital offline mode)', 'Physical notebook for pre-market plan'],
-        },
-        {
-          category: 'Certification & Language', color: 'var(--amber)',
-          items: ['Laptop/tablet', 'Noise-cancelling headphones', 'Anki app with downloaded decks', 'Pocket notebook + pen', 'Tutor session pre-scheduled (video call)', 'PDF study guides offline'],
-        },
-        {
-          category: 'Nutrition & Hydration', color: 'var(--red)',
-          items: ['Protein powder (single-serving packs)', 'Shaker bottle', 'Reusable 1L water bottle', 'Healthy snacks: nuts, protein bars, beef jerky', 'MyFitnessPal with offline entries'],
-        },
-      ].map(section => (
-        <div key={section.category} style={{ marginBottom: '.75rem' }}>
-          <h3 style={{ color: section.color }}>{section.category}</h3>
-          <ul>
-            {section.items.map(item => <li key={item}>{item}</li>)}
-          </ul>
+      {section.type === 'steps' && (
+        <div>
+          {section.items.map(item => (
+            <div key={item.id}>
+              {editItem?.id === item.id ? (
+                <div style={{ background: 'var(--bg-2)', borderRadius: 'var(--radius-sm)', padding: '.75rem', marginBottom: '.4rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                  <div className="form-row">
+                    <input className="form-input" placeholder="Time (e.g. 5:00–5:15)" value={editItem.time} onChange={e => setEditItem(v => ({ ...v, time: e.target.value }))} />
+                    <input className="form-input" placeholder="Title" value={editItem.title} onChange={e => setEditItem(v => ({ ...v, title: e.target.value }))} />
+                  </div>
+                  <input className="form-input" placeholder="Detail (optional)" value={editItem.detail || ''} onChange={e => setEditItem(v => ({ ...v, detail: e.target.value }))} />
+                  <div style={{ display: 'flex', gap: '.4rem', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setEditItem(null)}>Cancel</button>
+                    <button className="btn btn-primary btn-sm" onClick={() => saveEditItem(editItem)}>Save</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="sop-step" style={{ borderLeftColor: sopColor || 'var(--blue)' }}>
+                  <div className="sop-step-time" style={{ color: sopColor || 'var(--blue)' }}>{item.time}</div>
+                  <div className="sop-step-content" style={{ flex: 1 }}>
+                    <div className="sop-step-title">{item.title}</div>
+                    {item.detail && <div className="sop-step-detail">{item.detail}</div>}
+                  </div>
+                  {editMode && (
+                    <div style={{ display: 'flex', gap: '.25rem', flexShrink: 0 }}>
+                      <button className="btn btn-ghost btn-xs" onClick={() => setEditItem({ ...item })}>✏️</button>
+                      <button className="btn btn-danger btn-xs" onClick={() => deleteItem(item.id)}>✕</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-      ))}
+      )}
 
-      <h2>Hotel Room Bodyweight Circuit (No Gym)</h2>
-      <ul>
-        <li>20 pushups + 20 situps + 20 squats × 3 rounds</li>
-        <li>Band rows for back</li>
-        <li>Band overhead press</li>
-        <li>15 min jump rope or high knees</li>
-      </ul>
+      {section.type === 'list' && (
+        <ul style={{ paddingLeft: '1.2rem' }}>
+          {section.items.map(item => (
+            <li key={item.id} style={{ marginBottom: '.3rem', color: 'var(--text-2)', fontSize: '.875rem', display: 'flex', alignItems: 'flex-start', gap: '.4rem', paddingLeft: editMode ? 0 : undefined, listStyle: editMode ? 'none' : undefined }}>
+              {editMode ? (
+                editItem?.id === item.id ? (
+                  <div style={{ display: 'flex', gap: '.35rem', flex: 1, alignItems: 'center' }}>
+                    <input className="form-input" style={{ flex: 1 }} value={editItem.text} onChange={e => setEditItem(v => ({ ...v, text: e.target.value }))} />
+                    <button className="btn btn-ghost btn-xs" onClick={() => setEditItem(null)}>✕</button>
+                    <button className="btn btn-primary btn-xs" onClick={() => saveEditItem(editItem)}>✓</button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: '.35rem', flex: 1, alignItems: 'center' }}>
+                    <span style={{ flex: 1 }}>• {item.text}</span>
+                    <button className="btn btn-ghost btn-xs" onClick={() => setEditItem({ ...item })}>✏️</button>
+                    <button className="btn btn-danger btn-xs" onClick={() => deleteItem(item.id)}>✕</button>
+                  </div>
+                )
+              ) : item.text}
+            </li>
+          ))}
+        </ul>
+      )}
 
-      <h2>First 24 Hours Upon Arrival</h2>
-      {[
-        { time: 'Arrive', title: 'Unpack trading setup', detail: 'Test internet connection, Lucid Trading platform access.' },
-        { time: 'Day 1',  title: 'Locate gym or plan circuit', detail: 'Find hotel gym or identify bodyweight area.' },
-        { time: 'Day 1',  title: 'Grocery run', detail: 'Buy: Greek yogurt, oats, fruit, eggs, bottled water.' },
-        { time: 'Night',  title: 'Set alarms for 5:00 AM local', detail: 'Account for time zone change.' },
-        { time: 'Day 1',  title: 'Update checklist', detail: 'Note any location-specific adjustments (gym hours, local emergency numbers).' },
-      ].map(s => <SopStep key={s.time + s.title} {...s} color="var(--amber)" />)}
+      {section.type === 'grid' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '.5rem' }}>
+          {section.items.map(item => (
+            <div key={item.id} className="data-grid-card" style={{ position: 'relative' }}>
+              <div className="dgc-primary">{item.primary}</div>
+              <div className="dgc-secondary">{item.secondary}</div>
+              <div className="dgc-meta">{item.meta}</div>
+              {editMode && (
+                <div style={{ position: 'absolute', top: '.35rem', right: '.35rem', display: 'flex', gap: '.25rem' }}>
+                  <button className="btn btn-ghost btn-xs" onClick={() => setEditItem({ ...item })}>✏️</button>
+                  <button className="btn btn-danger btn-xs" onClick={() => deleteItem(item.id)}>✕</button>
+                </div>
+              )}
+              {editMode && editItem?.id === item.id && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                  <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1.5rem', width: 400, maxWidth: '100%' }}>
+                    <div className="modal-title">Edit Card</div>
+                    <div className="form">
+                      <div className="form-group"><label className="form-label">Day / Primary</label><input className="form-input" value={editItem.primary} onChange={e => setEditItem(v => ({ ...v, primary: e.target.value }))} /></div>
+                      <div className="form-group"><label className="form-label">Focus / Secondary</label><input className="form-input" value={editItem.secondary} onChange={e => setEditItem(v => ({ ...v, secondary: e.target.value }))} /></div>
+                      <div className="form-group"><label className="form-label">Details / Meta</label><textarea className="form-textarea" rows={2} value={editItem.meta} onChange={e => setEditItem(v => ({ ...v, meta: e.target.value }))} /></div>
+                    </div>
+                    <div className="modal-actions">
+                      <button className="btn btn-ghost" onClick={() => setEditItem(null)}>Cancel</button>
+                      <button className="btn btn-primary" onClick={() => saveEditItem(editItem)}>Save</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
-      <h2>Post-Trip Debrief (within 2 days of return)</h2>
-      <ul>
-        <li>Log any travel disruptions in Decision Log</li>
-        <li>Note what packing items were missing or unnecessary — update list</li>
-        <li>Catch up on any missed study/trading days using the weekend</li>
-      </ul>
+      {/* New item inline form */}
+      {editMode && newItem && (
+        <div style={{ background: 'var(--bg-2)', borderRadius: 'var(--radius-sm)', padding: '.75rem', marginTop: '.5rem', display: 'flex', flexDirection: 'column', gap: '.4rem', border: '1px solid var(--border)' }}>
+          {section.type === 'steps' && (
+            <>
+              <div className="form-row">
+                <input className="form-input" placeholder="Time (e.g. 6:00–6:10)" value={newItem.time} onChange={e => setNewItem(v => ({ ...v, time: e.target.value }))} />
+                <input className="form-input" placeholder="Title *" value={newItem.title} onChange={e => setNewItem(v => ({ ...v, title: e.target.value }))} />
+              </div>
+              <input className="form-input" placeholder="Detail (optional)" value={newItem.detail} onChange={e => setNewItem(v => ({ ...v, detail: e.target.value }))} />
+            </>
+          )}
+          {section.type === 'list' && (
+            <input className="form-input" placeholder="Item text *" value={newItem.text || ''} onChange={e => setNewItem(v => ({ ...v, text: e.target.value }))} />
+          )}
+          {section.type === 'grid' && (
+            <>
+              <div className="form-row">
+                <input className="form-input" placeholder="Day / Primary *" value={newItem.primary} onChange={e => setNewItem(v => ({ ...v, primary: e.target.value }))} />
+                <input className="form-input" placeholder="Focus / Secondary" value={newItem.secondary} onChange={e => setNewItem(v => ({ ...v, secondary: e.target.value }))} />
+              </div>
+              <input className="form-input" placeholder="Exercises / Details" value={newItem.meta} onChange={e => setNewItem(v => ({ ...v, meta: e.target.value }))} />
+            </>
+          )}
+          <div style={{ display: 'flex', gap: '.4rem', justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => setNewItem(null)}>Cancel</button>
+            <button className="btn btn-primary btn-sm" onClick={() => {
+              const valid = section.type === 'steps' ? newItem.title?.trim() : section.type === 'grid' ? newItem.primary?.trim() : newItem.text?.trim()
+              if (!valid) return
+              addItem(newItem)
+            }}>Add</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-const SOPS = {
-  morning:  { label: 'Morning Routine',  icon: '🌅', component: MorningRoutine },
-  evening:  { label: 'Evening Routine',  icon: '🌙', component: EveningRoutine },
-  travel:   { label: 'Travel Guide',     icon: '✈️', component: TravelGuide },
-}
+// ── SOP detail view ──────────────────────────────────────────────────────────
+function SopDetail({ sop, onUpdate, onDelete }) {
+  const [editMode, setEditMode] = useState(false)
+  const [editMeta, setEditMeta] = useState(null)
+  const [addSectionForm, setAddSectionForm] = useState(false)
+  const [newSec, setNewSec] = useState({ title: '', type: 'steps' })
 
-export default function SOPs() {
-  const { slug } = useParams()
-  const navigate = useNavigate()
-  const [active, setActive] = useState(slug || 'morning')
+  function handleUpdateSection(updatedSection) {
+    onUpdate({ ...sop, sections: sop.sections.map(s => s.id === updatedSection.id ? updatedSection : s) })
+  }
+  function handleDeleteSection(secId) {
+    onUpdate({ ...sop, sections: sop.sections.filter(s => s.id !== secId) })
+  }
+  function addSection() {
+    if (!newSec.title.trim()) return
+    const sec = { id: newSectionId(), type: newSec.type, title: newSec.title, items: [] }
+    onUpdate({ ...sop, sections: [...sop.sections, sec] })
+    setNewSec({ title: '', type: 'steps' })
+    setAddSectionForm(false)
+  }
+  function saveMeta(e) {
+    e.preventDefault()
+    onUpdate({ ...sop, ...editMeta })
+    setEditMeta(null)
+  }
 
-  const ActiveSop = SOPS[active]?.component
+  const alertType = sop.alertType || 'info'
 
   return (
     <div>
-      <div className="page-header">
-        <div className="page-title">📖 Standard Operating Procedures</div>
-        <div className="page-subtitle">Reference workflows and routines — your execution playbook</div>
+      <div className="card-header" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', flex: 1 }}>
+          <span style={{ fontSize: '1.8rem' }}>{sop.icon}</span>
+          <div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{sop.title}</div>
+            <div className="text-sm text-muted">{sop.description}</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '.4rem', flexShrink: 0 }}>
+          <button className={`btn btn-sm ${editMode ? 'btn-amber' : 'btn-ghost'}`} onClick={() => setEditMode(v => !v)}>
+            {editMode ? '✓ Done Editing' : '✏️ Edit'}
+          </button>
+          {editMode && <button className="btn btn-ghost btn-sm" onClick={() => setEditMeta({ icon: sop.icon, title: sop.title, description: sop.description, color: sop.color || '#4fa3f7', alertType: sop.alertType || 'info' })}>⚙️ Info</button>}
+          {editMode && <button className="btn btn-danger btn-sm" onClick={() => window.confirm(`Delete "${sop.title}"?`) && onDelete(sop.id)}>🗑️ Delete SOP</button>}
+        </div>
       </div>
 
-      <div className="sop-nav">
-        {Object.entries(SOPS).map(([key, sop]) => (
-          <button
-            key={key}
-            className={`btn ${active === key ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setActive(key)}
-          >
-            {sop.icon} {sop.label}
-          </button>
+      {sop.description && (
+        <div className={`alert alert-${alertType} section`}>
+          <span>{sop.icon}</span>
+          <div>{sop.description}</div>
+        </div>
+      )}
+
+      <div className="sop-content">
+        {sop.sections.map(sec => (
+          <SectionView
+            key={sec.id}
+            section={sec}
+            sopColor={sop.color}
+            editMode={editMode}
+            onUpdateSection={handleUpdateSection}
+            onDeleteSection={handleDeleteSection}
+          />
         ))}
       </div>
 
-      {ActiveSop && <ActiveSop />}
+      {editMode && (
+        <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
+          {addSectionForm ? (
+            <div style={{ background: 'var(--bg-2)', borderRadius: 'var(--radius-sm)', padding: '1rem', border: '1px solid var(--border)' }}>
+              <div className="modal-title" style={{ fontSize: '.95rem', marginBottom: '.75rem' }}>New Section</div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Section Title *</label>
+                  <input className="form-input" value={newSec.title} onChange={e => setNewSec(v => ({ ...v, title: e.target.value }))} placeholder="e.g. Success Criteria" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Type</label>
+                  <select className="form-select" value={newSec.type} onChange={e => setNewSec(v => ({ ...v, type: e.target.value }))}>
+                    <option value="steps">Steps (time + title + detail)</option>
+                    <option value="list">List (bullet points)</option>
+                    <option value="grid">Grid (day / focus / notes)</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '.4rem', marginTop: '.75rem', justifyContent: 'flex-end' }}>
+                <button className="btn btn-ghost btn-sm" onClick={() => setAddSectionForm(false)}>Cancel</button>
+                <button className="btn btn-primary btn-sm" onClick={addSection}>Add Section</button>
+              </div>
+            </div>
+          ) : (
+            <button className="btn btn-ghost" onClick={() => setAddSectionForm(true)}>+ Add Section</button>
+          )}
+        </div>
+      )}
+
+      {/* Edit meta modal */}
+      {editMeta && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <div className="modal-title">Edit SOP Info</div>
+            <form onSubmit={saveMeta} className="form">
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Icon (emoji)</label>
+                  <input className="form-input" value={editMeta.icon} onChange={e => setEditMeta(v => ({ ...v, icon: e.target.value }))} placeholder="🌅" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Accent Color</label>
+                  <input className="form-input" value={editMeta.color} onChange={e => setEditMeta(v => ({ ...v, color: e.target.value }))} placeholder="#4fa3f7" />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Title *</label>
+                <input className="form-input" required value={editMeta.title} onChange={e => setEditMeta(v => ({ ...v, title: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Description / Alert text</label>
+                <input className="form-input" value={editMeta.description || ''} onChange={e => setEditMeta(v => ({ ...v, description: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Alert Type</label>
+                <select className="form-select" value={editMeta.alertType || 'info'} onChange={e => setEditMeta(v => ({ ...v, alertType: e.target.value }))}>
+                  <option value="info">Info (blue)</option>
+                  <option value="warning">Warning (amber)</option>
+                  <option value="success">Success (green)</option>
+                  <option value="">None</option>
+                </select>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setEditMeta(null)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── New SOP modal ─────────────────────────────────────────────────────────────
+function NewSopModal({ onSave, onClose }) {
+  const [form, setForm] = useState({ icon: '📋', title: '', description: '', color: '#4fa3f7', alertType: 'info' })
+  function submit(e) {
+    e.preventDefault()
+    if (!form.title.trim()) return
+    onSave(form)
+    onClose()
+  }
+  return (
+    <div className="modal-backdrop">
+      <div className="modal">
+        <div className="modal-title">Create New SOP</div>
+        <form onSubmit={submit} className="form">
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Icon (emoji)</label>
+              <input className="form-input" value={form.icon} onChange={e => setForm(v => ({ ...v, icon: e.target.value }))} placeholder="📋" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Accent Color</label>
+              <input className="form-input" value={form.color} onChange={e => setForm(v => ({ ...v, color: e.target.value }))} placeholder="#4fa3f7" />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Title *</label>
+            <input className="form-input" required value={form.title} onChange={e => setForm(v => ({ ...v, title: e.target.value }))} placeholder="e.g. Pre-Market Routine" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Description / Alert text</label>
+            <input className="form-input" value={form.description} onChange={e => setForm(v => ({ ...v, description: e.target.value }))} placeholder="Brief overview or key rule" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Alert Style</label>
+            <select className="form-select" value={form.alertType} onChange={e => setForm(v => ({ ...v, alertType: e.target.value }))}>
+              <option value="info">Info (blue)</option>
+              <option value="warning">Warning (amber)</option>
+              <option value="success">Success (green)</option>
+              <option value="">None</option>
+            </select>
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Create SOP</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Main SOPs page ─────────────────────────────────────────────────────────────
+export default function SOPs() {
+  const { state, dispatch } = useApp()
+  const sops = state.sops || []
+  const [active, setActive] = useState(sops[0]?.id || null)
+  const [showNew, setShowNew] = useState(false)
+
+  const activeSop = sops.find(s => s.id === active)
+
+  function handleUpdate(updated) {
+    dispatch({ type: 'UPDATE_SOP', payload: updated })
+  }
+  function handleDelete(id) {
+    dispatch({ type: 'DELETE_SOP', payload: id })
+    setActive(sops.find(s => s.id !== id)?.id || null)
+  }
+  function handleCreate(data) {
+    dispatch({ type: 'ADD_SOP', payload: data })
+  }
+
+  return (
+    <div>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '.75rem' }}>
+        <div>
+          <div className="page-title">📖 Standard Operating Procedures</div>
+          <div className="page-subtitle">Reference workflows and execution playbooks — fully editable</div>
+        </div>
+        <button className="btn btn-primary" onClick={() => setShowNew(true)}>+ New SOP</button>
+      </div>
+
+      {sops.length === 0 ? (
+        <div className="card">
+          <div className="empty-state">
+            <div className="empty-state-icon">📖</div>
+            <div className="empty-state-text">No SOPs yet — create your first one</div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '1.25rem', alignItems: 'start' }}>
+          {/* Left nav */}
+          <div className="card" style={{ padding: '.75rem', position: 'sticky', top: '70px' }}>
+            {sops.map(sop => (
+              <button
+                key={sop.id}
+                onClick={() => setActive(sop.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '.6rem',
+                  width: '100%', padding: '.5rem .75rem',
+                  borderRadius: 'var(--radius-xs)', cursor: 'pointer',
+                  textAlign: 'left', fontSize: '.875rem', fontWeight: active === sop.id ? 600 : 400,
+                  background: active === sop.id ? `${sop.color}18` : 'transparent',
+                  color: active === sop.id ? sop.color || 'var(--blue)' : 'var(--text-2)',
+                  borderLeft: active === sop.id ? `3px solid ${sop.color || 'var(--blue)'}` : '3px solid transparent',
+                  transition: 'all var(--transition)',
+                }}
+              >
+                <span style={{ fontSize: '1.1rem' }}>{sop.icon}</span>
+                <span>{sop.title}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* SOP content */}
+          <div className="card" style={{ minHeight: 400 }}>
+            {activeSop
+              ? <SopDetail sop={activeSop} onUpdate={handleUpdate} onDelete={handleDelete} />
+              : <div className="empty-state"><div className="empty-state-text">Select a SOP to view</div></div>
+            }
+          </div>
+        </div>
+      )}
+
+      {showNew && <NewSopModal onSave={handleCreate} onClose={() => setShowNew(false)} />}
     </div>
   )
 }

@@ -227,6 +227,59 @@ function reducer(state, action) {
       return { ...state, spendingBudgets: budgets }
     }
 
+    // CERTIFICATIONS CRUD
+    case 'ADD_CERT': {
+      const entry = { id: newId('cert'), studyHoursLogged: 0, attempts: 0, practiceExamScores: [], ...action.payload }
+      return { ...state, certifications: [...state.certifications, entry] }
+    }
+    case 'DELETE_CERT': {
+      return {
+        ...state,
+        certifications: state.certifications.filter(c => c.id !== action.payload),
+        certStudySessions: state.certStudySessions.filter(s => s.certId !== action.payload)
+      }
+    }
+
+    // SOPs CRUD
+    case 'ADD_SOP': {
+      const entry = { id: newId('sop'), sections: [], ...action.payload }
+      return { ...state, sops: [...(state.sops || []), entry] }
+    }
+    case 'UPDATE_SOP': {
+      return { ...state, sops: (state.sops || []).map(s => s.id === action.payload.id ? { ...s, ...action.payload } : s) }
+    }
+    case 'DELETE_SOP': {
+      return { ...state, sops: (state.sops || []).filter(s => s.id !== action.payload) }
+    }
+
+    // CHECKLIST ITEMS (no-negotiables)
+    case 'ADD_CHECKLIST_ITEM': {
+      const { section, item } = action.payload
+      const newItem = { id: newId('ci'), key: newId('ck'), ...item }
+      const current = state.checklistItems?.[section] || []
+      return { ...state, checklistItems: { ...state.checklistItems, [section]: [...current, newItem] } }
+    }
+    case 'UPDATE_CHECKLIST_ITEM': {
+      const { section, item } = action.payload
+      return {
+        ...state,
+        checklistItems: {
+          ...state.checklistItems,
+          [section]: (state.checklistItems?.[section] || []).map(i => i.id === item.id ? { ...i, ...item } : i)
+        }
+      }
+    }
+    case 'DELETE_CHECKLIST_ITEM': {
+      const { section, id } = action.payload
+      return {
+        ...state,
+        checklistItems: {
+          ...state.checklistItems,
+          [section]: (state.checklistItems?.[section] || []).filter(i => i.id !== id)
+        }
+      }
+    }
+
     // SPRINTS
     case 'ADD_SPRINT': {
       const entry = { id: newId('sp'), ...action.payload }

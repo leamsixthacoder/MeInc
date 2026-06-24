@@ -2,12 +2,17 @@ import React, { useState } from 'react'
 import { useApp } from '../store/AppContext.jsx'
 import { todayISO, formatDate, daysUntil } from '../utils/dateUtils.js'
 
+const BLANK_NEW_CERT = {
+  code: '', name: '', targetDate: '', passingScore: 700, status: 'not_started'
+}
+
 export default function Certifications() {
   const { state, dispatch } = useApp()
   const [tab, setTab] = useState('study')
-  const [form, setForm] = useState({ certId: 'ai900', date: todayISO(), durationMinutes: 90, topics: '', practiceScore: '', pomodoros: 3, notes: '' })
+  const [form, setForm] = useState({ certId: state.certifications[0]?.id || '', date: todayISO(), durationMinutes: 90, topics: '', practiceScore: '', pomodoros: 3, notes: '' })
   const [editCert, setEditCert] = useState(null)
   const [certForm, setCertForm] = useState({})
+  const [newCert, setNewCert] = useState(null)
   const [errors, setErrors] = useState({})
 
   const sessions = [...state.certStudySessions].sort((a, b) => b.date.localeCompare(a.date))
@@ -52,9 +57,12 @@ export default function Certifications() {
 
   return (
     <div>
-      <div className="page-header">
-        <div className="page-title">🎓 Certifications</div>
-        <div className="page-subtitle">AI-900 by Jun 30 · SC-300 by Jul 31 · Pass score: 700/1000 · Retake within 30 days if failed</div>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '.75rem' }}>
+        <div>
+          <div className="page-title">🎓 Certifications</div>
+          <div className="page-subtitle">Pass score: 700/1000 · Retake within 30 days if failed</div>
+        </div>
+        <button className="btn btn-primary" onClick={() => setNewCert({ ...BLANK_NEW_CERT })}>+ New Certification</button>
       </div>
 
       {/* Cert Status Cards */}
@@ -79,6 +87,7 @@ export default function Certifications() {
                     {cert.status === 'not_started' ? 'Not Started' : cert.status === 'in_progress' ? 'In Progress' : cert.status === 'passed' ? '✓ Passed' : cert.status === 'failed' ? 'Failed' : cert.status}
                   </span>
                   <button className="btn btn-ghost btn-sm" onClick={() => openEditCert(cert)}>✏️</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => window.confirm(`Delete ${cert.code}? All study sessions will also be removed.`) && dispatch({ type: 'DELETE_CERT', payload: cert.id })}>🗑️</button>
                 </div>
               </div>
 
@@ -158,6 +167,53 @@ export default function Certifications() {
               <div className="modal-actions">
                 <button type="button" className="btn btn-ghost" onClick={() => setEditCert(null)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* New Cert Modal */}
+      {newCert && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <div className="modal-title">Add New Certification</div>
+            <form className="form" onSubmit={e => {
+              e.preventDefault()
+              if (!newCert.code || !newCert.name) return
+              dispatch({ type: 'ADD_CERT', payload: newCert })
+              setNewCert(null)
+            }}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Code <span>*</span></label>
+                  <input className="form-input" placeholder="e.g. AZ-900" value={newCert.code} onChange={e => setNewCert(v => ({ ...v, code: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Passing Score</label>
+                  <input className="form-input" type="number" min="0" max="1000" value={newCert.passingScore} onChange={e => setNewCert(v => ({ ...v, passingScore: +e.target.value }))} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Full Name <span>*</span></label>
+                <input className="form-input" placeholder="e.g. Azure Fundamentals" value={newCert.name} onChange={e => setNewCert(v => ({ ...v, name: e.target.value }))} />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Target Date</label>
+                  <input className="form-input" type="date" value={newCert.targetDate} onChange={e => setNewCert(v => ({ ...v, targetDate: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Status</label>
+                  <select className="form-select" value={newCert.status} onChange={e => setNewCert(v => ({ ...v, status: e.target.value }))}>
+                    <option value="not_started">Not Started</option>
+                    <option value="in_progress">In Progress</option>
+                  </select>
+                </div>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setNewCert(null)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Add Certification</button>
               </div>
             </form>
           </div>

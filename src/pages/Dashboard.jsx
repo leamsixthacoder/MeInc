@@ -1,7 +1,39 @@
 import React, { useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../store/AppContext.jsx'
 import { todayISO, formatDate, daysUntil, isMonday } from '../utils/dateUtils.js'
+
+// Default fallback items in case state hasn't loaded yet
+const DEFAULT_MORNING = [
+  { id: 'cm_wake', key: 'wake5am', label: 'Wake at 5:00 AM (no snooze)' },
+  { id: 'cm_pray', key: 'prayer', label: 'Prayer — 15 min' },
+  { id: 'cm_med', key: 'meditation', label: 'Meditation + breathing — 10 min' },
+  { id: 'cm_bible', key: 'bible', label: 'Bible / words of knowledge — 10 min' },
+  { id: 'cm_ex', key: 'exercise', label: '20 pushups + 20 situps + stretch' },
+  { id: 'cm_water', key: 'water', label: '500 ml water' },
+  { id: 'cm_shower', key: 'shower', label: 'Shower & dress' },
+  { id: 'cm_kpi', key: 'kpiReview', label: 'Review tasks & Daily KPI dashboard' },
+  { id: 'cm_mkt', key: 'marketPrep', label: 'Study market + trading plan (45 min)' },
+  { id: 'cm_gym', key: 'gym', label: 'Gym workout (Road to Dunk Again)' },
+]
+const DEFAULT_EVENING = [
+  { id: 'ce_shower', key: 'shower', label: 'Shower & dress' },
+  { id: 'ce_dinner', key: 'dinner', label: 'Dinner — tracked' },
+  { id: 'ce_task', key: 'taskReview', label: 'Review tasks completed / pending' },
+  { id: 'ce_lang', key: 'languageStudy', label: 'Language study (30 min weekdays)' },
+  { id: 'ce_cert', key: 'certStudy', label: 'Certification study (90 min)' },
+  { id: 'ce_pri', key: 'priorities', label: "Set tomorrow's priorities" },
+  { id: 'ce_pray', key: 'prayer', label: 'Prayer / meditation' },
+  { id: 'ce_ns', key: 'noScreens', label: 'No screens 15 min before bed' },
+  { id: 'ce_bed', key: 'bed1030', label: 'In bed by 10:30 PM' },
+]
+const DEFAULT_KPIS = [
+  { id: 'ck_wo', key: 'workout', label: 'Workout completed' },
+  { id: 'ck_en', key: 'englishStudy', label: 'English study (30 min)' },
+  { id: 'ck_cs', key: 'certStudy', label: 'Certification study (90 min)' },
+  { id: 'ck_tr', key: 'tradingTarget', label: 'Trading profit target (≥$200)' },
+  { id: 'ck_dp', key: 'debtPayment', label: 'Debt payment made' },
+]
 
 // ── Compliance Ring ───────────────────────────────────────────────────────────
 function ComplianceRing({ pct, color = '#3fb950' }) {
@@ -55,53 +87,23 @@ function statusLabel(pct) {
 }
 
 // ── Daily Checklist ───────────────────────────────────────────────────────────
-const MORNING_ITEMS = [
-  { key: 'wake5am',    label: 'Wake at 5:00 AM (no snooze)' },
-  { key: 'prayer',     label: 'Prayer — 15 min' },
-  { key: 'meditation', label: 'Meditation + breathing — 10 min' },
-  { key: 'bible',      label: 'Bible / words of knowledge — 10 min' },
-  { key: 'exercise',   label: '20 pushups + 20 situps + stretch' },
-  { key: 'water',      label: '500 ml water' },
-  { key: 'shower',     label: 'Shower & dress' },
-  { key: 'kpiReview',  label: 'Review tasks & Daily KPI dashboard' },
-  { key: 'marketPrep', label: 'Study market strategies + trading plan (45 min)' },
-  { key: 'gym',        label: 'Gym workout (Wed–Sun only)' },
-]
-const EVENING_ITEMS = [
-  { key: 'shower',       label: 'Shower & dress' },
-  { key: 'dinner',       label: 'Dinner — tracked' },
-  { key: 'taskReview',   label: 'Review tasks completed / pending' },
-  { key: 'languageStudy',label: 'Language study (30 min weekdays)' },
-  { key: 'certStudy',    label: 'Certification study (90 min)' },
-  { key: 'priorities',   label: 'Set tomorrow\'s priorities' },
-  { key: 'prayer',       label: 'Prayer / meditation' },
-  { key: 'noScreens',    label: 'No screens 15 min before bed' },
-  { key: 'bed1030',      label: 'In bed by 10:30 PM' },
-]
-const KPI_ITEMS = [
-  { key: 'workout',       label: 'Workout completed' },
-  { key: 'englishStudy',  label: 'English study (30 min)' },
-  { key: 'certStudy',     label: 'Certification study (90 min)' },
-  { key: 'tradingTarget', label: 'Trading profit target (≥$200)' },
-  { key: 'debtPayment',   label: 'Debt payment made' },
-]
-
 function DailyChecklist() {
   const { state, dispatch } = useApp()
   const today = todayISO()
   const log = state.dailyLogs.find(l => l.date === today)
+
+  const ci = state.checklistItems || {}
+  const MORNING_ITEMS = ci.morning?.length ? ci.morning : DEFAULT_MORNING
+  const EVENING_ITEMS = ci.evening?.length ? ci.evening : DEFAULT_EVENING
+  const KPI_ITEMS     = ci.kpis?.length    ? ci.kpis    : DEFAULT_KPIS
 
   const morning = log?.morning || {}
   const evening = log?.evening || {}
   const kpis    = log?.kpis    || {}
 
   function toggle(section, key) {
-    const current = section === 'morning' ? morning
-                  : section === 'evening' ? evening : kpis
-    dispatch({
-      type: 'UPSERT_DAILY_LOG',
-      payload: { [section]: { ...current, [key]: !current[key] } }
-    })
+    const current = section === 'morning' ? morning : section === 'evening' ? evening : kpis
+    dispatch({ type: 'UPSERT_DAILY_LOG', payload: { [section]: { ...current, [key]: !current[key] } } })
   }
 
   const morningCount = MORNING_ITEMS.filter(i => morning[i.key]).length
@@ -114,16 +116,26 @@ function DailyChecklist() {
   return (
     <div className="card">
       <div className="card-header">
-        <div className="card-title" style={{ marginBottom: 0 }}>Today's Non-Negotiables · {formatDate(today)}</div>
-        <ComplianceRing pct={pct} />
+        <div>
+          <div className="card-title" style={{ marginBottom: 0 }}>Today's Non-Negotiables · {formatDate(today)}</div>
+          <div style={{ marginTop: '.25rem' }}>
+            <span className={`badge ${pct >= 85 ? 'badge-green' : pct >= 60 ? 'badge-amber' : 'badge-grey'}`}>
+              {totalDone}/{totalItems} completed
+            </span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
+          <Link to="/checklist-settings" className="btn btn-ghost btn-sm" title="Edit checklist items">⚙️ Edit</Link>
+          <ComplianceRing pct={pct} />
+        </div>
       </div>
 
       <div className="grid-2" style={{ gap: '1.25rem' }}>
         <div>
-          <div className="check-section-title">Morning Routine</div>
+          <div className="check-section-title">☀️ Morning Routine</div>
           <div className="checklist">
             {MORNING_ITEMS.map(item => (
-              <label key={item.key} className={`check-item ${morning[item.key] ? 'checked' : ''}`}>
+              <label key={item.id || item.key} className={`check-item ${morning[item.key] ? 'checked' : ''}`}>
                 <input type="checkbox" checked={!!morning[item.key]} onChange={() => toggle('morning', item.key)} />
                 <span className="check-label">{item.label}</span>
               </label>
@@ -131,20 +143,20 @@ function DailyChecklist() {
           </div>
         </div>
         <div>
-          <div className="check-section-title">Evening Routine</div>
+          <div className="check-section-title">🌙 Evening Routine</div>
           <div className="checklist">
             {EVENING_ITEMS.map(item => (
-              <label key={item.key} className={`check-item ${evening[item.key] ? 'checked' : ''}`}>
+              <label key={item.id || item.key} className={`check-item ${evening[item.key] ? 'checked' : ''}`}>
                 <input type="checkbox" checked={!!evening[item.key]} onChange={() => toggle('evening', item.key)} />
                 <span className="check-label">{item.label}</span>
               </label>
             ))}
           </div>
 
-          <div className="check-section-title" style={{ marginTop: '.75rem' }}>Daily KPIs</div>
+          <div className="check-section-title" style={{ marginTop: '.75rem' }}>📊 Daily KPIs</div>
           <div className="checklist">
             {KPI_ITEMS.map(item => (
-              <label key={item.key} className={`check-item ${kpis[item.key] ? 'checked' : ''}`}>
+              <label key={item.id || item.key} className={`check-item ${kpis[item.key] ? 'checked' : ''}`}>
                 <input type="checkbox" checked={!!kpis[item.key]} onChange={() => toggle('kpis', item.key)} />
                 <span className="check-label">{item.label}</span>
               </label>
@@ -301,7 +313,8 @@ function QuickMetrics() {
 // ── Compliance History ────────────────────────────────────────────────────────
 function ComplianceHistory() {
   const { state } = useApp()
-  const totalItems = MORNING_ITEMS.length + EVENING_ITEMS.length + KPI_ITEMS.length
+  const ci = state.checklistItems || {}
+  const totalItems = (ci.morning?.length || DEFAULT_MORNING.length) + (ci.evening?.length || DEFAULT_EVENING.length) + (ci.kpis?.length || DEFAULT_KPIS.length)
 
   const last14 = state.dailyLogs
     .slice(-14)
