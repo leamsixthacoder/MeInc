@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { useApp } from '../store/AppContext.jsx'
 import { todayISO, formatDate, getWeekStart, isWednesday } from '../utils/dateUtils.js'
 
-const DAILY_ITEMS = ['Morning routine', 'Gym (if scheduled)', 'Trading prep & journal', 'Language study (30 min)', 'Certification study (90 min)', 'Nutrition tracked', 'Evening routine / bed by 10:30']
+const DAILY_ITEMS = ['Morning routine', 'Gym (if scheduled)', 'Language study (30 min)', 'Certification study (90 min)', 'Nutrition tracked', 'Evening routine / bed by 10:30']
 
 function CompliancePct({ pct }) {
   const color = pct >= 85 ? 'var(--green)' : pct >= 70 ? 'var(--amber)' : 'var(--red)'
@@ -138,7 +138,7 @@ export default function WeeklyOps() {
             <div className="card-title">Identify Drift & Corrective Action</div>
             <div className="form-group">
               <label className="form-label">Biggest drift (what went off track?)</label>
-              <textarea className="form-textarea" rows={2} placeholder="e.g. Missed trading prep 2 days, skipped gym Tuesday" value={form.biggestDrift} onChange={e => setForm(f => ({ ...f, biggestDrift: e.target.value }))} />
+              <textarea className="form-textarea" rows={2} placeholder="e.g. Missed language study 2 days, skipped gym Tuesday" value={form.biggestDrift} onChange={e => setForm(f => ({ ...f, biggestDrift: e.target.value }))} />
             </div>
             <div className="form-group">
               <label className="form-label">One corrective action for today</label>
@@ -174,7 +174,6 @@ export default function WeeklyOps() {
           {[
             'Compliance < 70% for two consecutive Wednesdays',
             'Same priority stalled both weeks in a row',
-            'Any trading rule violation (even once)',
             'Language or certification study missed 2+ days per week',
           ].map(t => (
             <div key={t} className="check-item" style={{ cursor: 'default' }}>

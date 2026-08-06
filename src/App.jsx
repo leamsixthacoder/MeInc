@@ -5,7 +5,6 @@ import { AppProvider } from './store/AppContext.jsx'
 import Dashboard      from './pages/Dashboard.jsx'
 import Health         from './pages/Health.jsx'
 import Finance        from './pages/Finance.jsx'
-import Trading        from './pages/Trading.jsx'
 import Language       from './pages/Language.jsx'
 import Certifications from './pages/Certifications.jsx'
 import Decisions      from './pages/Decisions.jsx'
@@ -21,7 +20,6 @@ const NAV_ITEMS = [
   { path: '/language',      label: 'Mind & Language',  icon: '🗣️' },
   { path: '/certifications',label: 'Certifications',   icon: '🎓' },
   { path: '/finance',       label: 'Finance',          icon: '💰' },
-  { path: '/trading',       label: 'Trading Desk',     icon: '📈' },
 ]
 
 const TOOL_ITEMS = [
@@ -114,7 +112,6 @@ export default function App() {
               <Route path="/language"       element={<Language />} />
               <Route path="/certifications" element={<Certifications />} />
               <Route path="/finance"        element={<Finance />} />
-              <Route path="/trading"        element={<Trading />} />
               <Route path="/decisions"      element={<Decisions />} />
               <Route path="/weekly-ops"     element={<WeeklyOps />} />
               <Route path="/qbr"            element={<QBR />} />

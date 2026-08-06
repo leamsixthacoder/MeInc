@@ -150,11 +150,17 @@ function WeightSection() {
 }
 
 // ── Workout Log ────────────────────────────────────────────────────────────────
-const WORKOUT_TYPES = ['Upper Strength', 'Lower Strength', 'Upper Hypertrophy', 'Lower Hypertrophy + Core', 'Full Body', 'Cardio', 'Active Recovery', 'Other']
-
+// Gym schedule & workout types are sourced live from the Morning Routine SOP
+// ('mg' grid section) so this log never drifts out of sync with the SOP.
 function WorkoutSection() {
   const { state, dispatch } = useApp()
-  const [form, setForm] = useState({ date: todayISO(), type: 'Upper Strength', completed: true, duration: 60, exercises: '', cardio: '', notes: '' })
+
+  const morningSOP = (state.sops || []).find(s => s.id === 'morning')
+  const gymSchedule = morningSOP?.sections?.find(sec => sec.id === 'mg')?.items || []
+  const workoutTypes = [...new Set(gymSchedule.map(g => g.secondary))]
+  if (!workoutTypes.includes('Other')) workoutTypes.push('Other')
+
+  const [form, setForm] = useState({ date: todayISO(), type: workoutTypes[0] || 'Other', completed: true, duration: 60, exercises: '', cardio: '', notes: '' })
   const [errors, setErrors] = useState({})
 
   function validate() {
@@ -175,8 +181,8 @@ function WorkoutSection() {
 
   const sorted = [...state.workoutLog].sort((a, b) => b.date.localeCompare(a.date))
   const last28 = state.workoutLog.filter(w => w.date >= new Date(Date.now() - 28 * 86400000).toISOString().slice(0, 10))
-  const gymDays = last28.filter(w => w.completed && !['Active Recovery', 'Other'].includes(w.type)).length
-  const compliancePct = Math.round((gymDays / (28 / 7 * 5)) * 100)
+  const gymDays = last28.filter(w => w.completed && !['Recovery', 'Other'].includes(w.type)).length
+  const compliancePct = Math.round((gymDays / (28 / 7 * 6)) * 100)
 
   return (
     <div className="section">
@@ -200,7 +206,7 @@ function WorkoutSection() {
               <div className="form-group">
                 <label className="form-label">Type<span>*</span></label>
                 <select className="form-select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-                  {WORKOUT_TYPES.map(t => <option key={t}>{t}</option>)}
+                  {workoutTypes.map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
             </div>
@@ -233,25 +239,21 @@ function WorkoutSection() {
         </div>
 
         <div className="card">
-          <div className="card-title">Gym Schedule (Wed–Sun)</div>
+          <div className="card-title">Gym Schedule — Road to Dunk Again</div>
+          <div className="form-hint" style={{ marginBottom: '.5rem' }}>Synced from the Morning Routine SOP — edit it there to update this schedule.</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-            {[
-              ['Wednesday', 'Upper Strength', 'Bench, Pullups, OHP, Rows, Dips'],
-              ['Thursday', 'Lower Strength', 'Squat, Deadlift, Leg Press, Curls, Calves'],
-              ['Friday', 'Upper Hypertrophy', 'Incline DB, Lat Pulldown, Laterals, Triceps, Biceps'],
-              ['Saturday', 'Lower Hypertrophy + Core', 'Goblet Squat, RDL, Lunges, Extensions, Leg Raises'],
-              ['Sunday', 'Full Body / Cardio', '5–6 compound + 30min steady state'],
-              ['Monday', 'Active Recovery', '30 min walk + stretching'],
-              ['Tuesday', 'Active Recovery', 'Mobility / yoga'],
-            ].map(([day, type, notes]) => (
-              <div key={day} style={{ padding: '.4rem .6rem', background: 'var(--bg-2)', borderRadius: 4 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span className="font-bold text-sm">{day}</span>
-                  <span className="text-xs text-blue">{type}</span>
+            {gymSchedule.length === 0
+              ? <div className="text-xs text-muted">No gym schedule found in the Morning Routine SOP.</div>
+              : gymSchedule.map(g => (
+                <div key={g.id} style={{ padding: '.4rem .6rem', background: 'var(--bg-2)', borderRadius: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span className="font-bold text-sm">{g.primary}</span>
+                    <span className="text-xs text-blue">{g.secondary}</span>
+                  </div>
+                  <div className="text-xs text-muted">{g.meta}</div>
                 </div>
-                <div className="text-xs text-muted">{notes}</div>
-              </div>
-            ))}
+              ))
+            }
           </div>
         </div>
       </div>

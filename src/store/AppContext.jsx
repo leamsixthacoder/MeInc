@@ -24,11 +24,11 @@ function reducer(state, action) {
       const existing = state.dailyLogs.findIndex(l => l.date === today)
       const base = existing >= 0 ? state.dailyLogs[existing] : {
         id: newId('dl'), date: today,
-        morning: { wake5am: false, prayer: false, meditation: false, bible: false, exercise: false, water: false, shower: false, kpiReview: false, marketPrep: false, gym: false },
+        morning: { wake5am: false, prayer: false, meditation: false, bible: false, exercise: false, water: false, shower: false, kpiReview: false, gym: false },
         evening: { shower: false, dinner: false, taskReview: false, languageStudy: false, certStudy: false, priorities: false, prayer: false, noScreens: false, bed1030: false },
-        kpis: { workout: false, englishStudy: false, certStudy: false, tradingTarget: false, debtPayment: false },
+        kpis: { workout: false, englishStudy: false, certStudy: false, debtPayment: false },
         nutrition: { calories: null, protein: null, water: null, tracked: false },
-        tradingPnl: null, weight: null, notes: ''
+        weight: null, notes: ''
       }
       const updated = { ...base, ...action.payload }
       const logs = existing >= 0
@@ -131,13 +131,6 @@ function reducer(state, action) {
     case 'DELETE_INCOME': {
       return { ...state, incomeLog: state.incomeLog.filter(i => i.id !== action.payload) }
     }
-    case 'UPDATE_OPTIONS_ACCOUNT': {
-      const histEntry = { date: todayISO(), value: action.payload.currentValue }
-      return {
-        ...state,
-        optionsAccount: { ...state.optionsAccount, ...action.payload, history: [...(state.optionsAccount.history || []), histEntry] }
-      }
-    }
     case 'LOG_GIVING': {
       return {
         ...state,
@@ -147,39 +140,6 @@ function reducer(state, action) {
           history: [...(state.givingAccount.history || []), { id: newId('gv'), ...action.payload }]
         }
       }
-    }
-
-    // TRADING — eval accounts
-    case 'ADD_EVAL_ACCOUNT': {
-      const entry = { id: newId('ea'), ...action.payload }
-      return { ...state, evalAccounts: [...(state.evalAccounts || []), entry] }
-    }
-    case 'UPDATE_EVAL_ACCOUNT': {
-      return { ...state, evalAccounts: (state.evalAccounts || []).map(a => a.id === action.payload.id ? { ...a, ...action.payload } : a) }
-    }
-    case 'DELETE_EVAL_ACCOUNT': {
-      return { ...state, evalAccounts: (state.evalAccounts || []).filter(a => a.id !== action.payload) }
-    }
-    case 'ADD_TRADE': {
-      const entry = { id: newId('tr'), ...action.payload }
-      return { ...state, trades: [...state.trades, entry] }
-    }
-    case 'UPDATE_TRADE': {
-      return { ...state, trades: state.trades.map(t => t.id === action.payload.id ? { ...t, ...action.payload } : t) }
-    }
-    case 'DELETE_TRADE': {
-      return { ...state, trades: state.trades.filter(t => t.id !== action.payload) }
-    }
-    case 'UPSERT_DAILY_TRADING_SUMMARY': {
-      const { date } = action.payload
-      const existing = state.tradingDailySummaries.findIndex(s => s.date === date)
-      const updated = existing >= 0
-        ? state.tradingDailySummaries.map((s, i) => i === existing ? { ...s, ...action.payload } : s)
-        : [...state.tradingDailySummaries, { id: newId('tds'), ...action.payload }]
-      return { ...state, tradingDailySummaries: updated }
-    }
-    case 'DELETE_DAILY_TRADING_SUMMARY': {
-      return { ...state, tradingDailySummaries: state.tradingDailySummaries.filter(s => s.id !== action.payload) }
     }
 
     // DECISIONS
@@ -225,6 +185,14 @@ function reducer(state, action) {
         ? (state.spendingBudgets || []).map((b, i) => i === existing ? { ...b, monthlyBudget } : b)
         : [...(state.spendingBudgets || []), { id: newId('sb'), category, monthlyBudget }]
       return { ...state, spendingBudgets: budgets }
+    }
+    case 'ADD_SPENDING_CATEGORY': {
+      const category = action.payload.trim()
+      if (!category || (state.spendingCategories || []).includes(category)) return state
+      return { ...state, spendingCategories: [...(state.spendingCategories || []), category] }
+    }
+    case 'UPDATE_FINANCE_SETTINGS': {
+      return { ...state, financeSettings: { ...state.financeSettings, ...action.payload } }
     }
 
     // CERTIFICATIONS CRUD

@@ -61,18 +61,6 @@ export const INITIAL_DATA = {
   ],
   incomeLog: [],
 
-  optionsAccount: {
-    currentValue: 2000,
-    currency: 'USD',
-    sprint1Target: 6000,
-    yearTarget: 15000,
-    paperTradesCompleted: 0,
-    paperTradeTarget: 50,
-    paperTradeWins: 0,
-    liveTradingEnabled: false,
-    history: []
-  },
-
   givingAccount: {
     currentBalance: 0,
     targetPercent: 2,
@@ -81,30 +69,13 @@ export const INITIAL_DATA = {
     history: []
   },
 
-  // ── TRADING ───────────────────────────────────────────────────────────────
-  evalAccounts: [
-    {
-      id: 'lucid_1',
-      firm: 'Lucid Trading',
-      label: 'Lucid #1',
-      accountSize: 50000,
-      status: 'not_started',
-      startDate: null,
-      targetPassDate: '2026-07-31',
-      profitTarget: 3000,
-      dailyLossLimit: 2000,
-      totalDrawdownLimit: 4000,
-      currentProfit: 0,
-      daysTraded: 0,
-      minTradingDays: 5,
-      notes: ''
-    }
-  ],
-  trades: [],
-  tradingDailySummaries: [],
-
   // ── SPENDING ──────────────────────────────────────────────────────────────
   spendingEntries: [],
+  spendingCategories: [
+    'Housing / Rent', 'Utilities', 'Transport', 'Groceries', 'Dining Out',
+    'Phone / Mobile', 'Gym & Health', 'Entertainment', 'Clothing', 'Personal Care',
+    'Education / Certs', 'Medical', 'Subscriptions', 'Other'
+  ],
   // Per-category monthly budget targets (DOP)
   spendingBudgets: [
     { id: 'sb_housing',     category: 'Housing / Rent',      monthlyBudget: 0     },
@@ -118,11 +89,14 @@ export const INITIAL_DATA = {
     { id: 'sb_clothing',    category: 'Clothing',            monthlyBudget: 0     },
     { id: 'sb_personal',    category: 'Personal Care',       monthlyBudget: 0     },
     { id: 'sb_education',   category: 'Education / Certs',   monthlyBudget: 0     },
-    { id: 'sb_trading',     category: 'Trading Fees',        monthlyBudget: 0     },
     { id: 'sb_medical',     category: 'Medical',             monthlyBudget: 0     },
     { id: 'sb_subs',        category: 'Subscriptions',       monthlyBudget: 0     },
     { id: 'sb_other',       category: 'Other',               monthlyBudget: 0     },
   ],
+  // Exchange rate for converting between spending currencies — update as the rate changes
+  financeSettings: {
+    usdToDopRate: 60
+  },
 
   // ── CHECKLIST ITEMS (dynamic no-negotiables) ─────────────────────────────
   checklistItems: {
@@ -135,7 +109,6 @@ export const INITIAL_DATA = {
       { id: 'cm_water',  key: 'water',      label: '500 ml water' },
       { id: 'cm_shower', key: 'shower',     label: 'Shower & dress' },
       { id: 'cm_kpi',    key: 'kpiReview',  label: 'Review tasks & Daily KPI dashboard' },
-      { id: 'cm_mkt',    key: 'marketPrep', label: 'Study market + trading plan (45 min)' },
       { id: 'cm_gym',    key: 'gym',        label: 'Gym workout (Road to Dunk Again)' },
     ],
     evening: [
@@ -153,7 +126,6 @@ export const INITIAL_DATA = {
       { id: 'ck_wo',  key: 'workout',       label: 'Workout completed' },
       { id: 'ck_en',  key: 'englishStudy',  label: 'English study (30 min)' },
       { id: 'ck_cs',  key: 'certStudy',     label: 'Certification study (90 min)' },
-      { id: 'ck_tr',  key: 'tradingTarget', label: 'Trading profit target (≥$200)' },
       { id: 'ck_dp',  key: 'debtPayment',   label: 'Debt payment made' },
     ]
   },
@@ -179,8 +151,6 @@ export const INITIAL_DATA = {
         'AI-900 pass by Jun 30',
         'SC-300 pass by Jul 31',
         'BHD + Banesco + Popular = $0 by Jun 15',
-        'Lucid Trading $50k eval passed',
-        'Options account: $6,000',
         'Non-APEC income ≥ 9,600 DOP/mo (20% of APEC)'
       ]
     },
@@ -195,9 +165,7 @@ export const INITIAL_DATA = {
         'Weight: 195 lb',
         'B2 English practice exam',
         'Start MS-102 or AZ-900',
-        'Second funded account eval passed',
         'Scotiabank: reduce by 500,000 DOP',
-        'Options account: $10,000',
         'Non-APEC income ≥ 24,000 DOP/mo (50% of APEC)'
       ]
     },
@@ -211,9 +179,7 @@ export const INITIAL_DATA = {
       milestones: [
         'Maintain 195 lb',
         'Official B2 English exam passed',
-        'Both funded accounts live: $400–$1,000/day total',
         'Scotiabank ≤ 2,200,000 DOP',
-        'Options account: $15,000',
         'Non-APEC income ≥ 52,700 DOP/mo (replace APEC 100%)'
       ]
     }
@@ -223,7 +189,7 @@ export const INITIAL_DATA = {
   sops: [
     {
       id: 'morning', icon: '🌅', title: 'Morning Routine', color: '#4fa3f7',
-      description: 'Start: 5:00 AM · End: ~8:10 AM · No snooze, no phone scrolling on wake',
+      description: 'Start: 5:00 AM · End: ~7:25 AM · No snooze, no phone scrolling on wake',
       alertType: 'info',
       sections: [
         {
@@ -236,10 +202,9 @@ export const INITIAL_DATA = {
             { id: 'ms5',  time: '5:35–5:40',  title: '20 pushups + 20 situps + stretch',      detail: 'No excuses. Use proper form. Stretch hamstrings, shoulders, hips.' },
             { id: 'ms6',  time: '5:40–5:45',  title: 'Hydrate — 500 ml water',               detail: 'Drink full glass. Optional: add lemon or electrolytes.' },
             { id: 'ms7',  time: '5:45–6:00',  title: 'Shower & dress (15 min)',               detail: 'Cold or warm. Dress for gym (if gym day) or work.' },
-            { id: 'ms8',  time: '6:00–6:10',  title: 'Review tasks & Daily KPI dashboard',    detail: 'Identify top 3 priorities. Check weight, debt, trading status.' },
-            { id: 'ms9',  time: '6:10–6:55',  title: 'Study market + trading plan (45 min)',  detail: 'Analyze charts. Write daily plan: entry, exit, stop loss. Check Lucid rules.' },
-            { id: 'ms10', time: '6:55–7:55',  title: 'Gym workout (1 hour)',                  detail: 'Follow Road to Dunk Again program. See schedule below.' },
-            { id: 'ms11', time: '7:55–8:10',  title: 'Shower, dress, breakfast (15 min)',     detail: 'Protein + oats. Eat after shower.' },
+            { id: 'ms8',  time: '6:00–6:10',  title: 'Review tasks & Daily KPI dashboard',    detail: 'Identify top 3 priorities. Check weight and debt status.' },
+            { id: 'ms10', time: '6:10–7:10',  title: 'Gym workout (1 hour)',                  detail: 'Follow Road to Dunk Again program. See schedule below.' },
+            { id: 'ms11', time: '7:10–7:25',  title: 'Shower, dress, breakfast (15 min)',     detail: 'Protein + oats. Eat after shower.' },
           ]
         },
         {
@@ -259,7 +224,6 @@ export const INITIAL_DATA = {
           items: [
             { id: 'ml1', text: 'Wake at 5:00 AM without snooze ≥90% of days' },
             { id: 'ml2', text: 'Weight trends down 1 lb/week' },
-            { id: 'ml3', text: 'Trading plan written before market open' },
             { id: 'ml4', text: 'Daily KPI dashboard reviewed before 7:00 AM' },
             { id: 'ml5', text: 'Gym compliance ≥85% (7 days/week)' },
           ]
@@ -278,7 +242,7 @@ export const INITIAL_DATA = {
             { id: 'es2',  time: '7:15–7:30', title: 'Dinner (15 min)',                       detail: 'Eat without screens. Protein + vegetables. Log in nutrition tracker.' },
             { id: 'es3',  time: '7:30–7:40', title: 'Review tasks (10 min)',                 detail: 'Mark done items. Move unfinished to tomorrow. Note any blockers.' },
             { id: 'es4',  time: '7:40–8:10', title: 'Language study (30 min) — weekdays',   detail: 'Active study: speaking, listening, or vocabulary.' },
-            { id: 'es5',  time: '8:10–9:40', title: 'Personal work (1.5 hours)',             detail: 'Deep work on certification, trading journal, or options study.' },
+            { id: 'es5',  time: '8:10–9:40', title: 'Personal work (1.5 hours)',             detail: 'Deep work on certification or side projects.' },
             { id: 'es6',  time: '9:40–9:55', title: "Set tomorrow's priorities (15 min)",   detail: 'Write top 3 priorities. Assign time blocks.' },
             { id: 'es7',  time: '9:55–10:10',title: 'Prayer / Meditation (15 min)',          detail: 'Evening prayer. Meditation to release stress.' },
             { id: 'es8',  time: '10:10–10:25',title: 'No screens before bed (15 min)',       detail: 'Read physical book, journal, or stretch. NO phone/TV/computer.' },
@@ -290,9 +254,7 @@ export const INITIAL_DATA = {
           id: 'ew', type: 'list', title: 'Personal Work Ideas (8:10–9:40 PM)',
           items: [
             { id: 'ew1', text: 'Certification study (AI-900 or SC-300) — modules, notes, practice exams' },
-            { id: 'ew2', text: 'Trading journal — review Lucid Trading trades, document mistakes, update stats' },
             { id: 'ew3', text: 'Debt tracking — update snowball, plan extra payments' },
-            { id: 'ew4', text: 'Options education — paper trading review, learn new strategy' },
             { id: 'ew5', text: 'Side business — any project that generates non-APEC income' },
           ]
         },
@@ -314,9 +276,7 @@ export const INITIAL_DATA = {
           id: 'tb', type: 'list', title: '48 Hours Before Departure',
           items: [
             { id: 'tb1', text: 'Check if hotel/gym has a fitness center. If not, plan bodyweight circuit.' },
-            { id: 'tb2', text: 'Verify internet reliability for trading. Bring mobile hotspot as backup.' },
             { id: 'tb3', text: 'Download offline study materials (certification videos, language podcasts).' },
-            { id: 'tb4', text: 'Notify Lucid Trading if travelling to restricted jurisdiction (check platform).' },
             { id: 'tb5', text: 'Print or save: Morning_Routine, Daily_CEO_Checklist, emergency contacts.' },
           ]
         },
@@ -328,16 +288,6 @@ export const INITIAL_DATA = {
             { id: 'tpg3', text: 'Workout clothes (2–3 sets, quick-dry)' },
             { id: 'tpg4', text: 'Jump rope (optional)' },
             { id: 'tpg5', text: 'Foam roller / lacrosse ball (travel size)' },
-          ]
-        },
-        {
-          id: 'tp_trade', type: 'list', title: '📈 Trading & Market Prep Pack',
-          items: [
-            { id: 'tpt1', text: 'Laptop with Lucid Trading platform installed' },
-            { id: 'tpt2', text: 'Charger + universal plug adapter' },
-            { id: 'tpt3', text: 'Mobile hotspot / phone tethering' },
-            { id: 'tpt4', text: 'Economic calendar bookmarked' },
-            { id: 'tpt5', text: 'Trade journal (digital offline mode)' },
           ]
         },
         {
@@ -362,7 +312,6 @@ export const INITIAL_DATA = {
         {
           id: 'ta', type: 'steps', title: 'First 24 Hours Upon Arrival',
           items: [
-            { id: 'ta1', time: 'Arrive', title: 'Unpack trading setup',         detail: 'Test internet connection, Lucid Trading platform access.' },
             { id: 'ta2', time: 'Day 1',  title: 'Locate gym or plan circuit',   detail: 'Find hotel gym or identify bodyweight area.' },
             { id: 'ta3', time: 'Day 1',  title: 'Grocery run',                  detail: 'Buy: Greek yogurt, oats, fruit, eggs, bottled water.' },
             { id: 'ta4', time: 'Night',  title: 'Set alarms for 5:00 AM local', detail: 'Account for time zone change.' },
@@ -374,7 +323,7 @@ export const INITIAL_DATA = {
           items: [
             { id: 'td1', text: 'Log any travel disruptions in Decision Log' },
             { id: 'td2', text: 'Note what packing items were missing or unnecessary — update list' },
-            { id: 'td3', text: 'Catch up on any missed study/trading days using the weekend' },
+            { id: 'td3', text: 'Catch up on any missed study days using the weekend' },
           ]
         }
       ]
@@ -479,48 +428,17 @@ export const INITIAL_DATA = {
   ]
 }
 
-export const SPENDING_CATEGORIES = [
-  'Housing / Rent', 'Utilities', 'Transport', 'Groceries', 'Dining Out',
-  'Phone / Mobile', 'Gym & Health', 'Entertainment', 'Clothing', 'Personal Care',
-  'Education / Certs', 'Trading Fees', 'Medical', 'Subscriptions', 'Other'
-]
-
 export const DECISION_CATEGORIES = [
-  'Strategy', 'Finance', 'Career', 'Trading', 'Health',
+  'Strategy', 'Finance', 'Career', 'Health',
   'Language', 'Investing', 'Giving', 'Timeline', 'Other'
 ]
 
 export const DECISION_STATUSES = ['Proposed', 'Active', 'Completed', 'Abandoned']
-
-export const EVAL_ACCOUNT_STATUSES = ['not_started', 'in_progress', 'passed', 'failed', 'reset']
-
-// Firm defaults — account size drives profit target and daily loss limit
-export const FIRM_PRESETS = {
-  'Lucid Trading': [
-    { accountSize: 50000, profitTarget: 3000, dailyLossLimit: 2000, totalDrawdownLimit: 4000, minTradingDays: 5 }
-  ],
-  'TradeIfy': [
-    { accountSize: 25000, profitTarget: 1500, dailyLossLimit: 1000, totalDrawdownLimit: 2000, minTradingDays: 5 }
-  ],
-  'TopStep': [
-    { accountSize: 50000, profitTarget: 3000, dailyLossLimit: 2000, totalDrawdownLimit: 4000, minTradingDays: 5 }
-  ],
-  'Custom': [
-    { accountSize: 50000, profitTarget: 3000, dailyLossLimit: 2000, totalDrawdownLimit: 4000, minTradingDays: 5 }
-  ]
-}
-
-// Derive defaults from account size (universal rule)
-export function accountSizeDefaults(size) {
-  if (size <= 25000) return { profitTarget: 1500, dailyLossLimit: 1000, totalDrawdownLimit: 2000 }
-  return { profitTarget: 3000, dailyLossLimit: 2000, totalDrawdownLimit: 4000 }
-}
 
 export const DEPT_META = {
   health:   { icon: '💪', color: '#3fb950', label: 'Body & Health' },
   language: { icon: '🗣️', color: '#58a6ff', label: 'Mind & Language' },
   certs:    { icon: '🎓', color: '#d2a8ff', label: 'Certifications' },
   finance:  { icon: '💰', color: '#f0c674', label: 'Financial Sovereignty' },
-  trading:  { icon: '📈', color: '#56d364', label: 'Trading Desk' },
   impact:   { icon: '🙏', color: '#ff7b72', label: 'Impact & Purpose' }
 }

@@ -51,8 +51,6 @@ export default function Settings() {
     { label: 'Language sessions',  value: state.languageSessions.length },
     { label: 'Tutor sessions',     value: state.tutorSessions.length },
     { label: 'Cert study sessions',value: state.certStudySessions.length },
-    { label: 'Trades logged',      value: state.trades.length },
-    { label: 'Trading summaries',  value: state.tradingDailySummaries.length },
     { label: 'Debt payments',      value: state.debtPayments.length },
     { label: 'Income entries',     value: state.incomeLog.length },
     { label: 'Daily logs',         value: state.dailyLogs.length },
@@ -127,7 +125,7 @@ export default function Settings() {
         <div style={{ fontSize: '.875rem', color: 'var(--text-2)' }}>
           <p style={{ marginBottom: '.5rem' }}>Personal life management system for Jose Vasquez, CEO of Me, Inc.</p>
           <p style={{ marginBottom: '.5rem' }}>Version 1.0 · Built May 2026 · All data stored locally</p>
-          <p>Vision: By 5/26/2031, Me, Inc. is a balanced, debt-free enterprise operating at peak human performance, generating $12,000–$25,000/month from investments and futures trading, giving 10% to meaningful causes.</p>
+          <p>Vision: By 5/26/2031, Me, Inc. is a balanced, debt-free enterprise operating at peak human performance, generating $12,000–$25,000/month from investments and passive income, giving 10% to meaningful causes.</p>
         </div>
         <div style={{ marginTop: '1rem', display: 'flex', gap: '.5rem', flexWrap: 'wrap', fontSize: '.8rem' }}>
           {[

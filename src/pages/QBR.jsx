@@ -242,9 +242,6 @@ function Sprint1LiveScorecard() {
   const ai900        = state.certifications.find(c => c.id === 'ai900')
   const sc300        = state.certifications.find(c => c.id === 'sc300')
   const smallLoans   = state.debts.filter(d => d.id !== 'scotiabank').reduce((x, d) => x + d.balance, 0)
-  const evalAccounts = state.evalAccounts || []
-  const anyPassed    = evalAccounts.some(a => a.status === 'passed')
-  const optionsVal   = state.optionsAccount.currentValue
 
   const rows = [
     { dept: 'Body',    kpi: 'Weight',              target: '197 lb',           current: `${latestWeight} lb`,             ok: +latestWeight <= 197 },
@@ -252,9 +249,7 @@ function Sprint1LiveScorecard() {
     { dept: 'Mind',    kpi: 'English study hours',  target: '≥60 hrs',          current: `${langHours} hrs`,               ok: +langHours >= 60 },
     { dept: 'Certs',   kpi: 'AI-900',               target: 'Pass by Jun 30',   current: ai900?.status ?? '—',             ok: ai900?.status === 'passed' },
     { dept: 'Certs',   kpi: 'SC-300',               target: 'Pass by Jul 31',   current: sc300?.status ?? '—',             ok: sc300?.status === 'passed' },
-    { dept: 'Trading', kpi: 'Funded eval',          target: 'Pass by Jul 31',   current: anyPassed ? 'passed' : 'pending', ok: anyPassed },
     { dept: 'Finance', kpi: 'BHD+Banesco+Popular',  target: '$0 DOP by Jun 15', current: `${(smallLoans/1000).toFixed(0)}k DOP`, ok: smallLoans === 0 },
-    { dept: 'Options', kpi: 'Account value',        target: '$6,000',           current: `$${optionsVal}`,                 ok: optionsVal >= 6000 },
   ]
   const onTrack = rows.filter(r => r.ok === true).length
   const total   = rows.filter(r => r.ok !== null).length

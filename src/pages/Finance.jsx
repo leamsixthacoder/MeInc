@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useApp } from '../store/AppContext.jsx'
 import { todayISO, formatDate } from '../utils/dateUtils.js'
-import { SPENDING_CATEGORIES } from '../data/initialData.js'
 
 function fmt(n, dec = 0) { return n?.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec }) ?? '—' }
 
@@ -37,7 +36,7 @@ function CategoryBars({ data, budgets = {} }) {
               <span>{d.category}</span>
               <span style={{ display: 'flex', gap: '.5rem' }}>
                 {budget > 0 && <span className={overBudget ? 'text-red' : 'text-muted'}>{overBudget ? '⚠' : ''} Budget: {fmt(budget)}</span>}
-                <strong className={overBudget ? 'text-red' : ''}>{fmt(d.total)} DOP</strong>
+                <strong className={overBudget ? 'text-red' : ''}>{fmt(d.total)} DOP eq.</strong>
               </span>
             </div>
             <div style={{ position: 'relative', height: 10, background: 'var(--bg-3)', borderRadius: 5 }}>
@@ -87,9 +86,17 @@ function SpendingSection() {
   const [viewMonth, setViewMonth] = useState(today.slice(0, 7))
   const [showBudgetEdit, setShowBudgetEdit] = useState(false)
   const [budgetDraft, setBudgetDraft] = useState({})
+  const [newCategory, setNewCategory] = useState('')
+  const [showRateEdit, setShowRateEdit] = useState(false)
+  const [rateDraft, setRateDraft] = useState('')
   const [editEntry, setEditEntry] = useState(null)
-  const [form, setForm] = useState({ date: today, category: 'Groceries', amount: '', description: '', notes: '' })
+  const [form, setForm] = useState({ date: today, category: 'Groceries', amount: '', currency: 'DOP', description: '', notes: '' })
   const [errors, setErrors] = useState({})
+
+  const categories = state.spendingCategories || []
+  const rate = state.financeSettings?.usdToDopRate || 60
+  const toDOP = (e) => e.currency === 'USD' ? e.amount * rate : e.amount
+  const toUSD = (e) => e.currency === 'USD' ? e.amount : e.amount / rate
 
   const entries = state.spendingEntries || []
   const budgets = Object.fromEntries((state.spendingBudgets || []).map(b => [b.category, b.monthlyBudget]))
@@ -104,16 +111,18 @@ function SpendingSection() {
     }).sort((a, b) => b.date.localeCompare(a.date))
   }, [entries, period, viewMonth, viewYear, today])
 
-  const total = filtered.reduce((s, e) => s + e.amount, 0)
+  const totalDOP = filtered.reduce((s, e) => s + toDOP(e), 0)
+  const totalUSD = filtered.reduce((s, e) => s + toUSD(e), 0)
+  const total = totalDOP // DOP-equivalent grand total, used for budget comparisons
 
-  // ── Category breakdown ──
+  // ── Category breakdown (amounts converted to DOP-equivalent) ──
   const byCategory = useMemo(() => {
     const map = {}
-    filtered.forEach(e => { map[e.category] = (map[e.category] || 0) + e.amount })
+    filtered.forEach(e => { map[e.category] = (map[e.category] || 0) + toDOP(e) })
     return Object.entries(map)
       .map(([category, total]) => ({ category, total }))
       .sort((a, b) => b.total - a.total)
-  }, [filtered])
+  }, [filtered, rate])
 
   // ── Monthly totals (for year view chart) ──
   const monthlyTotals = useMemo(() => {
@@ -121,10 +130,10 @@ function SpendingSection() {
     const map = {}
     entries.filter(e => isoYear(e.date) === viewYear).forEach(e => {
       const m = isoMonth(e.date)
-      map[m] = (map[m] || 0) + e.amount
+      map[m] = (map[m] || 0) + toDOP(e)
     })
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b)).map(([month, total]) => ({ month, total }))
-  }, [entries, period, viewYear])
+  }, [entries, period, viewYear, rate])
 
   // ── Budget totals (monthly only) ──
   const monthBudgetTotal = (state.spendingBudgets || []).reduce((s, b) => s + (b.monthlyBudget || 0), 0)
@@ -154,7 +163,7 @@ function SpendingSection() {
     ev.preventDefault()
     const e = validateForm(form)
     if (Object.keys(e).length) { setErrors(e); return }
-    dispatch({ type: 'ADD_SPENDING', payload: { date: form.date, category: form.category, amount: +form.amount, description: form.description, notes: form.notes } })
+    dispatch({ type: 'ADD_SPENDING', payload: { date: form.date, category: form.category, amount: +form.amount, currency: form.currency, description: form.description, notes: form.notes } })
     setForm(f => ({ ...f, amount: '', description: '', notes: '' }))
     setErrors({})
   }
@@ -163,7 +172,7 @@ function SpendingSection() {
     ev.preventDefault()
     const e = validateForm(editEntry)
     if (Object.keys(e).length) { setErrors(e); return }
-    dispatch({ type: 'UPDATE_SPENDING', payload: { id: editEntry.id, date: editEntry.date, category: editEntry.category, amount: +editEntry.amount, description: editEntry.description, notes: editEntry.notes } })
+    dispatch({ type: 'UPDATE_SPENDING', payload: { id: editEntry.id, date: editEntry.date, category: editEntry.category, amount: +editEntry.amount, currency: editEntry.currency, description: editEntry.description, notes: editEntry.notes } })
     setEditEntry(null)
     setErrors({})
   }
@@ -180,6 +189,25 @@ function SpendingSection() {
   function openBudgetEdit() {
     setBudgetDraft(Object.fromEntries((state.spendingBudgets || []).map(b => [b.category, b.monthlyBudget || ''])))
     setShowBudgetEdit(true)
+  }
+
+  function addCategory() {
+    const cat = newCategory.trim()
+    if (!cat) return
+    dispatch({ type: 'ADD_SPENDING_CATEGORY', payload: cat })
+    setNewCategory('')
+  }
+
+  function openRateEdit() {
+    setRateDraft(String(rate))
+    setShowRateEdit(true)
+  }
+
+  function saveRate() {
+    const val = +rateDraft
+    if (!val || val <= 0) return
+    dispatch({ type: 'UPDATE_FINANCE_SETTINGS', payload: { usdToDopRate: val } })
+    setShowRateEdit(false)
   }
 
   // ── Period label ──
@@ -207,14 +235,15 @@ function SpendingSection() {
           </select>
         )}
         <button className="btn btn-ghost btn-sm" onClick={openBudgetEdit}>⚙ Budgets</button>
+        <button className="btn btn-ghost btn-sm" onClick={openRateEdit}>💱 1 USD = {fmt(rate)} DOP</button>
       </div>
 
       {/* ── Summary KPI strip ── */}
       <div className="grid-4" style={{ marginBottom: '1rem' }}>
         <div className="kpi-card">
           <div className="kpi-label">Total Spent</div>
-          <div className="kpi-value" style={{ fontSize: '1.3rem' }}>{fmt(total)} DOP</div>
-          <div className="kpi-sub">{periodLabel}</div>
+          <div className="kpi-value" style={{ fontSize: '1.3rem' }}>{fmt(totalDOP)} DOP</div>
+          <div className="kpi-sub">≈ ${fmt(totalUSD, 2)} USD · {periodLabel}</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Transactions</div>
@@ -254,14 +283,23 @@ function SpendingSection() {
               <div className="form-group">
                 <label className="form-label">Category<span>*</span></label>
                 <select className="form-select" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                  {SPENDING_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                  {categories.map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Amount (DOP)<span>*</span></label>
-              <input className={`form-input ${errors.amount ? 'error' : ''}`} type="number" min="1" step="0.01" placeholder="e.g. 1,500" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-              {errors.amount && <div className="form-error">{errors.amount}</div>}
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Amount<span>*</span></label>
+                <input className={`form-input ${errors.amount ? 'error' : ''}`} type="number" min="1" step="0.01" placeholder="e.g. 1,500" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+                {errors.amount && <div className="form-error">{errors.amount}</div>}
+              </div>
+              <div className="form-group">
+                <label className="form-label">Currency</label>
+                <select className="form-select" value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
+                  <option value="DOP">DOP</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
             </div>
             <div className="form-group">
               <label className="form-label">Description</label>
@@ -298,18 +336,18 @@ function SpendingSection() {
       {filtered.length > 0 && (
         <div className="table-wrap" style={{ marginTop: '1rem' }}>
           <table>
-            <thead><tr><th>Date</th><th>Category</th><th>Amount (DOP)</th><th>Description</th><th>Notes</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Description</th><th>Notes</th><th></th></tr></thead>
             <tbody>
               {filtered.map(e => (
                 <tr key={e.id}>
                   <td>{formatDate(e.date)}</td>
                   <td><span className="badge badge-grey">{e.category}</span></td>
-                  <td className="font-bold text-red">−{fmt(e.amount)}</td>
+                  <td className="font-bold text-red">−{fmt(e.amount, e.currency === 'USD' ? 2 : 0)} {e.currency || 'DOP'}</td>
                   <td className="truncate" style={{ maxWidth: 200 }}>{e.description || '—'}</td>
                   <td className="text-muted truncate" style={{ maxWidth: 140 }}>{e.notes || '—'}</td>
                   <td>
                     <div className="td-actions">
-                      <button className="btn btn-ghost btn-sm" onClick={() => { setEditEntry({ ...e, amount: String(e.amount) }); setErrors({}) }}>✏️</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { setEditEntry({ ...e, amount: String(e.amount), currency: e.currency || 'DOP' }); setErrors({}) }}>✏️</button>
                       <button className="btn btn-danger btn-sm" onClick={() => window.confirm('Delete this entry?') && dispatch({ type: 'DELETE_SPENDING', payload: e.id })}>✕</button>
                     </div>
                   </td>
@@ -317,7 +355,7 @@ function SpendingSection() {
               ))}
               <tr style={{ background: 'var(--bg-2)', fontWeight: 700 }}>
                 <td colSpan={2}>Total</td>
-                <td className="text-red">−{fmt(total)} DOP</td>
+                <td className="text-red">−{fmt(totalDOP)} DOP <span className="text-muted" style={{ fontWeight: 400 }}>(≈ ${fmt(totalUSD, 2)} USD)</span></td>
                 <td colSpan={3} />
               </tr>
             </tbody>
@@ -339,14 +377,23 @@ function SpendingSection() {
                 <div className="form-group">
                   <label className="form-label">Category</label>
                   <select className="form-select" value={editEntry.category} onChange={e => setEditEntry(f => ({ ...f, category: e.target.value }))}>
-                    {SPENDING_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                    {categories.map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Amount (DOP)<span>*</span></label>
-                <input className={`form-input ${errors.amount ? 'error' : ''}`} type="number" min="1" step="0.01" value={editEntry.amount} onChange={e => setEditEntry(f => ({ ...f, amount: e.target.value }))} />
-                {errors.amount && <div className="form-error">{errors.amount}</div>}
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Amount<span>*</span></label>
+                  <input className={`form-input ${errors.amount ? 'error' : ''}`} type="number" min="1" step="0.01" value={editEntry.amount} onChange={e => setEditEntry(f => ({ ...f, amount: e.target.value }))} />
+                  {errors.amount && <div className="form-error">{errors.amount}</div>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Currency</label>
+                  <select className="form-select" value={editEntry.currency} onChange={e => setEditEntry(f => ({ ...f, currency: e.target.value }))}>
+                    <option value="DOP">DOP</option>
+                    <option value="USD">USD</option>
+                  </select>
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Description</label>
@@ -372,7 +419,7 @@ function SpendingSection() {
             <div className="modal-title">⚙ Monthly Budgets (DOP)</div>
             <div className="form-hint" style={{ marginBottom: '1rem' }}>Set a budget of 0 to disable tracking for a category. The amber marker on the bar shows your budget limit.</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', maxHeight: '60vh', overflowY: 'auto' }}>
-              {SPENDING_CATEGORIES.map(cat => (
+              {categories.map(cat => (
                 <div key={cat} className="form-row" style={{ alignItems: 'center' }}>
                   <label className="form-label" style={{ marginBottom: 0, minWidth: 160, fontSize: '.8rem' }}>{cat}</label>
                   <input
@@ -387,9 +434,33 @@ function SpendingSection() {
                 </div>
               ))}
             </div>
+            <div className="form-row" style={{ marginTop: '.75rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <input className="form-input" type="text" placeholder="New category name" value={newCategory} onChange={e => setNewCategory(e.target.value)} />
+              </div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={addCategory}>+ Add Category</button>
+            </div>
             <div className="modal-actions">
               <button className="btn btn-ghost" onClick={() => setShowBudgetEdit(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={saveBudgets}>Save Budgets</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Exchange rate modal ── */}
+      {showRateEdit && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <div className="modal-title">💱 USD → DOP Exchange Rate</div>
+            <div className="form-hint" style={{ marginBottom: '1rem' }}>Used to convert between USD and DOP spending totals. Update it whenever the dollar rate changes.</div>
+            <div className="form-group">
+              <label className="form-label">1 USD = ? DOP</label>
+              <input className="form-input" type="number" min="1" step="0.01" autoFocus value={rateDraft} onChange={e => setRateDraft(e.target.value)} />
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-ghost" onClick={() => setShowRateEdit(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={saveRate}>Save Rate</button>
             </div>
           </div>
         </div>
@@ -524,7 +595,7 @@ function DebtSection() {
               { step: 1, name: 'BHD',      target: 'May 30',  amount: '48,154 DOP' },
               { step: 2, name: 'Banesco',   target: 'Jun 13',  amount: '70,744 DOP' },
               { step: 3, name: 'Popular',   target: 'Jul 25',  amount: '146,805 DOP' },
-              { step: 4, name: 'Scotiabank',target: 'Feb 2028 (no trading) / Oct 2026 (with trading)', amount: '2,711,000 DOP' },
+              { step: 4, name: 'Scotiabank',target: 'Feb 2028', amount: '2,711,000 DOP' },
             ].map(s => {
               const debt = state.debts.find(d => d.name === s.name)
               const done = debt?.balance === 0
@@ -541,7 +612,7 @@ function DebtSection() {
           </div>
           <div className="alert alert-info" style={{ marginTop: '.75rem' }}>
             <span>📊</span>
-            <div>Monthly surplus: ~142,207 DOP after small loans gone. With trading: Scotiabank done by Oct 2026.</div>
+            <div>Monthly surplus: ~142,207 DOP after small loans gone.</div>
           </div>
         </div>
       </div>
@@ -623,8 +694,6 @@ function IncomeSection() {
               <label className="form-label">Source</label>
               <select className="form-select" value={form.sourceId} onChange={e => setForm(f => ({ ...f, sourceId: e.target.value }))}>
                 {state.incomeSources.map(src => <option key={src.id} value={src.id}>{src.name}</option>)}
-                <option value="trading">Funded Trading Payout</option>
-                <option value="options">Options Trading Gain</option>
                 <option value="other">Other</option>
               </select>
             </div>
@@ -653,8 +722,8 @@ function IncomeSection() {
             APEC contributes <strong className="text-amber">48,000 DOP/month</strong> (17% of total). Replace with non-APEC income by Dec 2026.
           </div>
           {[
-            { period: 'Sprint 1 (Aug 1 QBR)', pct: 20,  amount: '9,600 DOP/mo',  from: 'Funded trading' },
-            { period: 'Sprint 2 (Oct)',        pct: 50,  amount: '24,000 DOP/mo', from: 'Trading + options' },
+            { period: 'Sprint 1 (Aug 1 QBR)', pct: 20,  amount: '9,600 DOP/mo',  from: 'Side income' },
+            { period: 'Sprint 2 (Oct)',        pct: 50,  amount: '24,000 DOP/mo', from: 'Side income' },
             { period: 'Wrap-up (Dec)',         pct: 100, amount: '48,000+ DOP/mo',from: 'All non-APEC' },
           ].map(r => (
             <div key={r.period} style={{ marginBottom: '.5rem' }}>
@@ -688,99 +757,6 @@ function IncomeSection() {
           </table>
         </div>
       )}
-    </div>
-  )
-}
-
-// ── Options Account ────────────────────────────────────────────────────────────
-function OptionsSection() {
-  const { state, dispatch } = useApp()
-  const opts = state.optionsAccount
-  const [form, setForm] = useState({ currentValue: opts.currentValue, paperTradesCompleted: opts.paperTradesCompleted, paperTradeWins: opts.paperTradeWins })
-  const [saved, setSaved] = useState(false)
-
-  function save(ev) {
-    ev.preventDefault()
-    dispatch({ type: 'UPDATE_OPTIONS_ACCOUNT', payload: {
-      currentValue: +form.currentValue,
-      paperTradesCompleted: +form.paperTradesCompleted,
-      paperTradeWins: +form.paperTradeWins,
-      liveTradingEnabled: +form.paperTradesCompleted >= opts.paperTradeTarget && (+form.paperTradeWins / +form.paperTradesCompleted) >= 0.70
-    }})
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  const winRate = opts.paperTradesCompleted > 0 ? ((opts.paperTradeWins / opts.paperTradesCompleted) * 100).toFixed(0) : 0
-  const liveOk = opts.paperTradesCompleted >= opts.paperTradeTarget && winRate >= 70
-
-  return (
-    <div className="section">
-      <div className="section-header">
-        <div className="section-title">Options Account</div>
-        <span className={`badge ${liveOk ? 'badge-green' : 'badge-amber'}`}>{liveOk ? '✓ Live Trading Unlocked' : 'Paper Trading Phase'}</span>
-      </div>
-
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-title">Account Status</div>
-          <form onSubmit={save} className="form">
-            <div className="form-group">
-              <label className="form-label">Current Account Value (USD)</label>
-              <input className="form-input" type="number" min="0" step="0.01" value={form.currentValue} onChange={e => setForm(f => ({ ...f, currentValue: e.target.value }))} />
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Paper Trades Done</label>
-                <input className="form-input" type="number" min="0" max="200" value={form.paperTradesCompleted} onChange={e => setForm(f => ({ ...f, paperTradesCompleted: e.target.value }))} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Paper Trade Wins</label>
-                <input className="form-input" type="number" min="0" value={form.paperTradeWins} onChange={e => setForm(f => ({ ...f, paperTradeWins: e.target.value }))} />
-              </div>
-            </div>
-            <button type="submit" className="btn btn-primary">{saved ? '✓ Saved' : 'Update'}</button>
-          </form>
-        </div>
-
-        <div className="card">
-          <div className="card-title">Progress to Live Trading</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', marginBottom: '.2rem' }}>
-                <span>Account value</span>
-                <span className={opts.currentValue >= opts.sprint1Target ? 'text-green' : 'text-amber'}>${opts.currentValue} / ${opts.sprint1Target}</span>
-              </div>
-              <div className="progress-bar">
-                <div className="progress-fill progress-fill-blue" style={{ width: `${Math.min(100, (opts.currentValue / opts.sprint1Target) * 100)}%` }} />
-              </div>
-              <div className="form-hint">Sprint 1 target: $6,000 · Year target: $15,000</div>
-            </div>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', marginBottom: '.2rem' }}>
-                <span>Paper trades ({opts.paperTradesCompleted}/{opts.paperTradeTarget} required)</span>
-                <span className={opts.paperTradesCompleted >= opts.paperTradeTarget ? 'text-green' : 'text-amber'}>{opts.paperTradesCompleted}/{opts.paperTradeTarget}</span>
-              </div>
-              <div className="progress-bar">
-                <div className="progress-fill progress-fill-green" style={{ width: `${Math.min(100, (opts.paperTradesCompleted / opts.paperTradeTarget) * 100)}%` }} />
-              </div>
-            </div>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', marginBottom: '.2rem' }}>
-                <span>Win rate (need ≥70%)</span>
-                <span className={winRate >= 70 ? 'text-green' : 'text-red'}>{winRate}%</span>
-              </div>
-              <div className="progress-bar">
-                <div className={`progress-fill ${winRate >= 70 ? 'progress-fill-green' : 'progress-fill-red'}`} style={{ width: `${Math.min(100, winRate)}%` }} />
-              </div>
-            </div>
-            {liveOk
-              ? <div className="alert alert-success"><span>✓</span><div>Ready for live options trading! Keep risk ≤2% per trade.</div></div>
-              : <div className="alert alert-warning"><span>⚠️</span><div>Complete {opts.paperTradeTarget - opts.paperTradesCompleted} more paper trades with ≥70% win rate before going live.</div></div>
-            }
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
@@ -886,14 +862,13 @@ export default function Finance() {
         <div className="page-subtitle">Goal: Debt-free · $12k–$25k/month passive income · 10% giving automated</div>
       </div>
       <div className="tabs">
-        {[['spending','💸 Spending'], ['debt','Debt Snowball'], ['income','Income'], ['options','Options Acct'], ['giving','Giving']].map(([k,l]) => (
+        {[['spending','💸 Spending'], ['debt','Debt Snowball'], ['income','Income'], ['giving','Giving']].map(([k,l]) => (
           <button key={k} className={`tab-btn ${tab === k ? 'active' : ''}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
       {tab === 'spending' && <SpendingSection />}
       {tab === 'debt'     && <DebtSection />}
       {tab === 'income'   && <IncomeSection />}
-      {tab === 'options'  && <OptionsSection />}
       {tab === 'giving'   && <GivingSection />}
     </div>
   )

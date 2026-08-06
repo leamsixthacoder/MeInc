@@ -13,7 +13,6 @@ const DEFAULT_MORNING = [
   { id: 'cm_water', key: 'water', label: '500 ml water' },
   { id: 'cm_shower', key: 'shower', label: 'Shower & dress' },
   { id: 'cm_kpi', key: 'kpiReview', label: 'Review tasks & Daily KPI dashboard' },
-  { id: 'cm_mkt', key: 'marketPrep', label: 'Study market + trading plan (45 min)' },
   { id: 'cm_gym', key: 'gym', label: 'Gym workout (Road to Dunk Again)' },
 ]
 const DEFAULT_EVENING = [
@@ -31,7 +30,6 @@ const DEFAULT_KPIS = [
   { id: 'ck_wo', key: 'workout', label: 'Workout completed' },
   { id: 'ck_en', key: 'englishStudy', label: 'English study (30 min)' },
   { id: 'ck_cs', key: 'certStudy', label: 'Certification study (90 min)' },
-  { id: 'ck_tr', key: 'tradingTarget', label: 'Trading profit target (≥$200)' },
   { id: 'ck_dp', key: 'debtPayment', label: 'Debt payment made' },
 ]
 
@@ -190,20 +188,6 @@ function QuickMetrics() {
   const ai900 = state.certifications.find(c => c.id === 'ai900')
   const sc300 = state.certifications.find(c => c.id === 'sc300')
 
-  // Trading eval accounts — profit derived from trade logs
-  const evalAccounts = state.evalAccounts || []
-  const allTrades    = state.trades || []
-  const activeEval   = evalAccounts.find(a => a.status === 'in_progress') || evalAccounts[0]
-  const passedCount  = evalAccounts.filter(a => a.status === 'passed').length
-  // Compute profit for the active account from logged trades
-  const activeEvalProfit = activeEval
-    ? allTrades.filter(t => t.accountId === activeEval.id).reduce((s, t) => s + (t.pnl || 0), 0)
-    : 0
-  const evalPct = activeEval?.profitTarget ? Math.min(100, Math.round((activeEvalProfit / activeEval.profitTarget) * 100)) : 0
-
-  // Options account
-  const opts = state.optionsAccount
-
   // Days until key deadlines
   const daysAI900 = daysUntil('2026-06-30')
   const daysSC300 = daysUntil('2026-07-31')
@@ -245,16 +229,6 @@ function QuickMetrics() {
         </div>
       </div>
 
-      {/* Options Account */}
-      <div className="kpi-card">
-        <div className="kpi-label">📈 Options Acct</div>
-        <div className="kpi-value">${opts.currentValue.toLocaleString()}</div>
-        <div className="kpi-sub">Target: $6k (Sprint 1) / $15k (Year)</div>
-        <div className="progress-bar" style={{ marginTop: '.4rem' }}>
-          <div className="progress-fill progress-fill-green" style={{ width: `${Math.min(100, (opts.currentValue / opts.sprint1Target) * 100)}%` }} />
-        </div>
-      </div>
-
       {/* AI-900 */}
       <div className="kpi-card">
         <div className="kpi-label">🎓 AI-900</div>
@@ -277,24 +251,6 @@ function QuickMetrics() {
         <span className={`badge ${sc300?.status === 'passed' ? 'badge-green' : 'badge-grey'}`}>
           {sc300?.status === 'passed' ? 'Passed' : 'Not Started'}
         </span>
-      </div>
-
-      {/* Eval Accounts */}
-      <div className="kpi-card">
-        <div className="kpi-label">📊 Eval Accounts</div>
-        {activeEval ? (
-          <>
-            <div className="kpi-value" style={{ color: activeEval.status === 'passed' ? 'var(--green)' : activeEvalProfit < 0 ? 'var(--red)' : 'var(--text-1)', fontSize: '1rem' }}>
-              {activeEval.status === 'passed' ? '✓ PASSED' : `${activeEvalProfit >= 0 ? '+' : ''}$${activeEvalProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-            </div>
-            <div className="kpi-sub">{activeEval.label || activeEval.firm} · {passedCount}/{evalAccounts.length} passed</div>
-            <div className="progress-bar" style={{ marginTop: '.4rem' }}>
-              <div className="progress-fill progress-fill-green" style={{ width: `${evalPct}%` }} />
-            </div>
-          </>
-        ) : (
-          <div className="kpi-value" style={{ fontSize: '.9rem', color: 'var(--text-3)' }}>No accounts</div>
-        )}
       </div>
 
       {/* Total Debt */}
@@ -385,7 +341,6 @@ function WeightTrend() {
 function UpcomingDeadlines() {
   const deadlines = [
     { label: 'BHD Paid Off',         date: '2026-05-30', dept: 'Finance',  color: 'var(--amber)' },
-    { label: 'Open Lucid Trading Eval',date: '2026-06-01', dept: 'Trading',  color: 'var(--blue)'  },
     { label: 'Banesco + Popular Paid',date: '2026-06-15', dept: 'Finance',  color: 'var(--amber)' },
     { label: 'Giving Account Setup',  date: '2026-06-15', dept: 'Impact',   color: 'var(--purple)'},
     { label: 'AI-900 Exam',           date: '2026-06-30', dept: 'Cert',     color: 'var(--green)' },
@@ -417,11 +372,9 @@ function UpcomingDeadlines() {
 
 // ── Quick Log (weight, P&L) ───────────────────────────────────────────────────
 function QuickLog() {
-  const { state, dispatch } = useApp()
+  const { dispatch } = useApp()
   const today = todayISO()
-  const todayLog = state.dailyLogs.find(l => l.date === today)
   const [weight, setWeight] = React.useState('')
-  const [pnl, setPnl]       = React.useState('')
 
   function saveWeight(e) {
     e.preventDefault()
@@ -429,36 +382,16 @@ function QuickLog() {
     dispatch({ type: 'LOG_WEIGHT', payload: { date: today, weight: +weight } })
     setWeight('')
   }
-  function savePnl(e) {
-    e.preventDefault()
-    if (isNaN(+pnl)) return
-    dispatch({ type: 'UPSERT_DAILY_LOG', payload: { tradingPnl: +pnl } })
-    setPnl('')
-  }
+
+  if (!isMonday()) return null
 
   return (
     <div className="card">
       <div className="card-title">Quick Log</div>
-      <div className="grid-2" style={{ gap: '.75rem' }}>
-        {isMonday() && (
-          <form onSubmit={saveWeight} style={{ display: 'flex', gap: '.4rem' }}>
-            <input className="form-input" type="number" step="0.1" placeholder="Weight (lb)" value={weight} onChange={e => setWeight(e.target.value)} />
-            <button type="submit" className="btn btn-primary btn-sm">Log</button>
-          </form>
-        )}
-        <form onSubmit={savePnl} style={{ display: 'flex', gap: '.4rem' }}>
-          <input className="form-input" type="number" step="0.01" placeholder="Trading P&L ($)" value={pnl} onChange={e => setPnl(e.target.value)} />
-          <button type="submit" className="btn btn-primary btn-sm">Log</button>
-        </form>
-      </div>
-      {todayLog?.tradingPnl != null && (
-        <div className="mt-sm">
-          <span className="text-sm text-muted">Today's P&L: </span>
-          <span className={`text-sm font-bold ${todayLog.tradingPnl >= 0 ? 'text-green' : 'text-red'}`}>
-            {todayLog.tradingPnl >= 0 ? '+' : ''}${todayLog.tradingPnl.toFixed(2)}
-          </span>
-        </div>
-      )}
+      <form onSubmit={saveWeight} style={{ display: 'flex', gap: '.4rem' }}>
+        <input className="form-input" type="number" step="0.1" placeholder="Weight (lb)" value={weight} onChange={e => setWeight(e.target.value)} />
+        <button type="submit" className="btn btn-primary btn-sm">Log</button>
+      </form>
     </div>
   )
 }
@@ -468,22 +401,16 @@ function Sprint1Scoreboard() {
   const { state } = useApp()
   const ai900 = state.certifications.find(c => c.id === 'ai900')
   const sc300 = state.certifications.find(c => c.id === 'sc300')
-  const evalAccounts = state.evalAccounts || []
-  const anyEvalPassed = evalAccounts.some(a => a.status === 'passed')
-  const activeEval = evalAccounts.find(a => a.status === 'in_progress') || evalAccounts[0]
   const smallLoans = state.debts.filter(d => d.id !== 'scotiabank').reduce((s, d) => s + d.balance, 0)
   const langHours = state.languageSessions.reduce((s, l) => s + (l.durationMinutes || 30) / 60, 0)
   const latestWeight = state.weightLog[state.weightLog.length - 1]?.weight ?? 203
-  const opts = state.optionsAccount
 
   const rows = [
     { label: 'Weight → 197 lb',       current: `${latestWeight} lb`,         target: '197 lb',  done: latestWeight <= 197 },
     { label: 'English study → 60 hrs', current: `${langHours.toFixed(1)} hrs`,target: '60 hrs',  done: langHours >= 60 },
     { label: 'AI-900 pass',            current: ai900?.status,               target: 'Pass',     done: ai900?.status === 'passed' },
     { label: 'SC-300 pass',            current: sc300?.status,               target: 'Pass',     done: sc300?.status === 'passed' },
-    { label: '1st eval account pass',   current: activeEval?.status ?? 'none', target: 'Pass',    done: anyEvalPassed },
     { label: 'BHD/Banesco/Popular = 0',current: `${(smallLoans/1000).toFixed(0)}k DOP`, target: '0', done: smallLoans === 0 },
-    { label: 'Options acct → $6k',     current: `$${opts.currentValue}`,     target: '$6,000',   done: opts.currentValue >= 6000 },
   ]
   const done = rows.filter(r => r.done).length
 
