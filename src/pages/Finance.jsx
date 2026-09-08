@@ -470,19 +470,150 @@ function SpendingSection() {
 }
 
 // ── Debt Snowball ─────────────────────────────────────────────────────────────
+const BLANK_DEBT_FORM = { name: '', currency: 'DOP', initialBalance: '', balance: '', interestRate: '', minimumPayment: '' }
+
+// ── Add / Edit Loan Modal ──────────────────────────────────────────────────────
+function LoanModal({ initial, title, onSave, onClose }) {
+  const [form, setForm] = useState(initial)
+  const [error, setError] = useState('')
+
+  function submit(ev) {
+    ev.preventDefault()
+    if (!form.name.trim()) { setError('Loan name is required'); return }
+    if (form.initialBalance === '' || isNaN(+form.initialBalance) || +form.initialBalance < 0) { setError('Enter a valid initial balance'); return }
+    onSave({
+      ...form,
+      initialBalance: +form.initialBalance,
+      balance: form.balance === '' ? +form.initialBalance : +form.balance,
+      interestRate: +form.interestRate || 0,
+      minimumPayment: +form.minimumPayment || 0,
+    })
+  }
+
+  return (
+    <div className="modal-backdrop">
+      <div className="modal">
+        <div className="modal-title">{title}</div>
+        <form onSubmit={submit} className="form">
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Loan Name<span>*</span></label>
+              <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. BHD" autoFocus />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Currency</label>
+              <select className="form-select" value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
+                <option value="DOP">DOP</option>
+                <option value="USD">USD</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Initial Balance<span>*</span></label>
+              <input className="form-input" type="number" min="0" value={form.initialBalance} onChange={e => setForm(f => ({ ...f, initialBalance: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Current Balance</label>
+              <input className="form-input" type="number" min="0" placeholder="Same as initial" value={form.balance} onChange={e => setForm(f => ({ ...f, balance: e.target.value }))} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Interest Rate (% APR)</label>
+              <input className="form-input" type="number" step="0.01" min="0" value={form.interestRate} onChange={e => setForm(f => ({ ...f, interestRate: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Minimum Payment / mo</label>
+              <input className="form-input" type="number" min="0" value={form.minimumPayment} onChange={e => setForm(f => ({ ...f, minimumPayment: e.target.value }))} />
+            </div>
+          </div>
+          {error && <div className="form-error">{error}</div>}
+          <div className="modal-actions">
+            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Save Loan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Reset Loan Modal ───────────────────────────────────────────────────────────
+function ResetLoanModal({ debt, onSave, onClose }) {
+  const [form, setForm] = useState({ name: debt.name, currency: debt.currency, initialBalance: '', interestRate: debt.interestRate, minimumPayment: debt.minimumPayment })
+  const [error, setError] = useState('')
+
+  function submit(ev) {
+    ev.preventDefault()
+    if (form.initialBalance === '' || isNaN(+form.initialBalance) || +form.initialBalance <= 0) { setError('Enter the new loan balance'); return }
+    onSave({ id: debt.id, name: form.name, currency: form.currency, initialBalance: +form.initialBalance, interestRate: +form.interestRate || 0, minimumPayment: +form.minimumPayment || 0 })
+  }
+
+  return (
+    <div className="modal-backdrop">
+      <div className="modal">
+        <div className="modal-title">Reset Loan — {debt.name}</div>
+        <div className="alert alert-info" style={{ marginBottom: '.75rem' }}>
+          <span>ℹ️</span>
+          <div>"{debt.name}" will be archived as paid/closed (its payment history stays intact) and a brand new loan cycle starts below.</div>
+        </div>
+        <form onSubmit={submit} className="form">
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Name</label>
+              <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Currency</label>
+              <select className="form-select" value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
+                <option value="DOP">DOP</option>
+                <option value="USD">USD</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">New Balance<span>*</span></label>
+            <input className="form-input" type="number" min="0" value={form.initialBalance} onChange={e => setForm(f => ({ ...f, initialBalance: e.target.value }))} autoFocus />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Interest Rate (% APR)</label>
+              <input className="form-input" type="number" step="0.01" min="0" value={form.interestRate} onChange={e => setForm(f => ({ ...f, interestRate: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Minimum Payment / mo</label>
+              <input className="form-input" type="number" min="0" value={form.minimumPayment} onChange={e => setForm(f => ({ ...f, minimumPayment: e.target.value }))} />
+            </div>
+          </div>
+          {error && <div className="form-error">{error}</div>}
+          <div className="modal-actions">
+            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Reset Loan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function DebtSection() {
   const { state, dispatch } = useApp()
-  const [form, setForm] = useState({ debtId: 'bhd', amount: '', date: todayISO(), notes: '' })
+  const [form, setForm] = useState({ debtId: '', amount: '', date: todayISO(), notes: '' })
   const [errors, setErrors] = useState({})
+  const [showAdd, setShowAdd] = useState(false)
   const [editDebt, setEditDebt] = useState(null)
-  const [newBalance, setNewBalance] = useState('')
+  const [resetDebt, setResetDebt] = useState(null)
+  const [showPaidOff, setShowPaidOff] = useState(false)
 
-  const activeDebts = state.debts.filter(d => d.balance > 0)
-  const totalDebt = state.debts.reduce((s, d) => s + d.balance, 0)
-  const smallLoans = state.debts.filter(d => d.id !== 'scotiabank').reduce((s, d) => s + d.balance, 0)
+  const activeDebts = [...state.debts.filter(d => d.status === 'active')].sort((a, b) => a.priority - b.priority)
+  const completedDebts = state.debts.filter(d => d.status === 'completed')
+  const totalDebt = activeDebts.reduce((s, d) => s + d.balance, 0)
+  const payDebtId = form.debtId || activeDebts[0]?.id || ''
 
   function validate() {
     const e = {}
+    if (!payDebtId) e.debtId = 'Add a loan first'
     if (!form.amount || isNaN(+form.amount) || +form.amount <= 0) e.amount = 'Enter a positive amount'
     if (!form.date) e.date = 'Required'
     return e
@@ -492,16 +623,31 @@ function DebtSection() {
     ev.preventDefault()
     const e = validate()
     if (Object.keys(e).length) { setErrors(e); return }
-    dispatch({ type: 'ADD_DEBT_PAYMENT', payload: { debtId: form.debtId, amount: +form.amount, date: form.date, notes: form.notes } })
+    dispatch({ type: 'ADD_DEBT_PAYMENT', payload: { debtId: payDebtId, amount: +form.amount, date: form.date, notes: form.notes } })
     setForm(f => ({ ...f, amount: '', notes: '' }))
     setErrors({})
   }
 
-  function updateBalance() {
-    if (!newBalance || isNaN(+newBalance)) return
-    dispatch({ type: 'UPDATE_DEBT_BALANCE', payload: { id: editDebt, balance: +newBalance } })
+  function addLoan(data) {
+    dispatch({ type: 'ADD_DEBT', payload: data })
+    setShowAdd(false)
+  }
+  function saveLoanEdit(data) {
+    dispatch({ type: 'UPDATE_DEBT', payload: { id: editDebt.id, ...data } })
     setEditDebt(null)
-    setNewBalance('')
+  }
+  function saveReset(data) {
+    dispatch({ type: 'RESET_DEBT', payload: data })
+    setResetDebt(null)
+  }
+  function completeLoan(id, name) {
+    if (window.confirm(`Mark "${name}" as paid off / complete?`)) dispatch({ type: 'COMPLETE_DEBT', payload: id })
+  }
+  function deleteLoan(id, name) {
+    if (window.confirm(`Permanently delete "${name}" and its payment history? This can't be undone.`)) dispatch({ type: 'DELETE_DEBT', payload: id })
+  }
+  function reorder(id, direction) {
+    dispatch({ type: 'REORDER_DEBT', payload: { id, direction } })
   }
 
   const payments = [...state.debtPayments].sort((a, b) => b.date.localeCompare(a.date))
@@ -510,117 +656,140 @@ function DebtSection() {
     <div className="section">
       <div className="section-header">
         <div className="section-title">Debt Snowball</div>
-        <div style={{ display: 'flex', gap: '.75rem', fontSize: '.8rem' }}>
-          <span>Small loans: <strong className={smallLoans === 0 ? 'text-green' : 'text-amber'}>{smallLoans === 0 ? '✓ PAID' : `${fmt(smallLoans)} DOP`}</strong></span>
-          <span>Total: <strong>{fmt(totalDebt)} DOP</strong></span>
+        <div style={{ display: 'flex', gap: '.75rem', alignItems: 'center', fontSize: '.8rem' }}>
+          <span>Active total: <strong>{totalDebt === 0 && activeDebts.length === 0 ? '—' : `${fmt(totalDebt)} DOP eq.`}</strong></span>
+          <button className="btn btn-primary btn-sm" onClick={() => setShowAdd(true)}>+ Add Loan</button>
         </div>
       </div>
 
-      {/* Debt Cards */}
-      <div className="grid-4" style={{ marginBottom: '1rem' }}>
-        {state.debts.map(d => {
-          const pct = Math.round(((d.initialBalance - d.balance) / d.initialBalance) * 100)
-          return (
-            <div key={d.id} className="kpi-card" style={{ borderLeft: `3px solid ${d.balance === 0 ? 'var(--green)' : d.priority <= 3 ? 'var(--amber)' : 'var(--blue)'}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div className="kpi-label">{d.name} <span className="text-xs">Priority {d.priority}</span></div>
-                  <div className="kpi-value" style={{ fontSize: '1.2rem', color: d.balance === 0 ? 'var(--green)' : 'var(--text-1)' }}>
-                    {d.balance === 0 ? '✓ PAID' : `${fmt(d.balance)} DOP`}
+      {/* Debt Cards, in priority (snowball) order */}
+      {activeDebts.length === 0 ? (
+        <div className="card empty-state" style={{ marginBottom: '1rem' }}>
+          <div className="empty-state-icon">🎉</div>
+          <div className="empty-state-text">No active loans. Click "+ Add Loan" to track one.</div>
+        </div>
+      ) : (
+        <div className="grid-4" style={{ marginBottom: '1rem' }}>
+          {activeDebts.map((d, i) => {
+            const pct = d.initialBalance > 0 ? Math.round(((d.initialBalance - d.balance) / d.initialBalance) * 100) : 0
+            return (
+              <div key={d.id} className="kpi-card" style={{ borderLeft: `3px solid ${i === 0 ? 'var(--amber)' : 'var(--blue)'}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div className="kpi-label">{d.name} <span className="text-xs">Priority {i + 1}</span></div>
+                    <div className="kpi-value" style={{ fontSize: '1.2rem' }}>{fmt(d.balance)} {d.currency}</div>
+                    <div className="kpi-sub">{d.interestRate}% APR · Min {fmt(d.minimumPayment)}/mo</div>
                   </div>
-                  <div className="kpi-sub">{d.interestRate}% APR · Min {fmt(d.minimumPayment)}/mo</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.15rem', alignItems: 'center' }}>
+                    <button className="btn btn-ghost btn-xs" disabled={i === 0} onClick={() => reorder(d.id, 'up')} title="Higher priority">▲</button>
+                    <button className="btn btn-ghost btn-xs" disabled={i === activeDebts.length - 1} onClick={() => reorder(d.id, 'down')} title="Lower priority">▼</button>
+                  </div>
                 </div>
-                <button className="btn btn-ghost btn-sm" onClick={() => { setEditDebt(d.id); setNewBalance(d.balance) }} title="Correct balance">✏️</button>
+                <div className="progress-bar" style={{ marginTop: '.4rem' }}>
+                  <div className="progress-fill progress-fill-green" style={{ width: `${pct}%` }} />
+                </div>
+                <div className="progress-labels"><span>{pct}% paid off</span><span>Initial: {fmt(d.initialBalance)}</span></div>
+                <div style={{ display: 'flex', gap: '.3rem', marginTop: '.5rem', flexWrap: 'wrap' }}>
+                  <button className="btn btn-ghost btn-xs" onClick={() => setEditDebt(d)} title="Edit loan">✏️ Edit</button>
+                  <button className="btn btn-ghost btn-xs" onClick={() => setResetDebt(d)} title="Archive and start a new cycle">↻ Reset</button>
+                  <button className="btn btn-ghost btn-xs" onClick={() => completeLoan(d.id, d.name)} title="Mark paid off">✓ Complete</button>
+                  <button className="btn btn-danger btn-xs" onClick={() => deleteLoan(d.id, d.name)} title="Delete permanently">✕</button>
+                </div>
               </div>
-              <div className="progress-bar" style={{ marginTop: '.4rem' }}>
-                <div className="progress-fill progress-fill-green" style={{ width: `${pct}%` }} />
-              </div>
-              <div className="progress-labels"><span>{pct}% paid off</span><span>Initial: {fmt(d.initialBalance)}</span></div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Correct Balance Modal */}
-      {editDebt && (
-        <div className="modal-backdrop">
-          <div className="modal">
-            <div className="modal-title">Correct Balance — {state.debts.find(d => d.id === editDebt)?.name}</div>
-            <div className="form-group">
-              <label className="form-label">New Current Balance (DOP)</label>
-              <input className="form-input" type="number" min="0" value={newBalance} onChange={e => setNewBalance(e.target.value)} autoFocus />
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-ghost" onClick={() => setEditDebt(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={updateBalance}>Update Balance</button>
-            </div>
-          </div>
+            )
+          })}
         </div>
       )}
+
+      {/* Paid Off / Closed trophy case */}
+      {completedDebts.length > 0 && (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <div className="card-header" style={{ cursor: 'pointer' }} onClick={() => setShowPaidOff(v => !v)}>
+            <div className="card-title" style={{ marginBottom: 0 }}>🏆 Paid Off / Closed ({completedDebts.length})</div>
+            <span className="btn btn-ghost btn-xs">{showPaidOff ? '▲ Hide' : '▼ Show'}</span>
+          </div>
+          {showPaidOff && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', marginTop: '.5rem' }}>
+              {completedDebts.map(d => (
+                <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.4rem .6rem', background: 'var(--bg-2)', borderRadius: 4 }}>
+                  <span><span className="text-green">✓</span> <strong>{d.name}</strong> <span className="text-xs text-muted">Initial: {fmt(d.initialBalance)} {d.currency}</span></span>
+                  <button className="btn btn-danger btn-xs" onClick={() => deleteLoan(d.id, d.name)} title="Delete permanently">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {showAdd && <LoanModal initial={BLANK_DEBT_FORM} title="Add Loan" onSave={addLoan} onClose={() => setShowAdd(false)} />}
+      {editDebt && (
+        <LoanModal
+          initial={{ name: editDebt.name, currency: editDebt.currency, initialBalance: editDebt.initialBalance, balance: editDebt.balance, interestRate: editDebt.interestRate, minimumPayment: editDebt.minimumPayment }}
+          title={`Edit Loan — ${editDebt.name}`}
+          onSave={saveLoanEdit}
+          onClose={() => setEditDebt(null)}
+        />
+      )}
+      {resetDebt && <ResetLoanModal debt={resetDebt} onSave={saveReset} onClose={() => setResetDebt(null)} />}
 
       <div className="grid-2">
         <div className="card">
           <div className="card-title">Log Payment</div>
-          <form onSubmit={submitPayment} className="form">
-            <div className="form-group">
-              <label className="form-label">Debt Account<span>*</span></label>
-              <select className="form-select" value={form.debtId} onChange={e => setForm(f => ({ ...f, debtId: e.target.value }))}>
-                {state.debts.map(d => <option key={d.id} value={d.id}>{d.name} — {d.balance > 0 ? fmt(d.balance) + ' DOP' : 'PAID'}</option>)}
-              </select>
-            </div>
-            <div className="form-row">
+          {activeDebts.length === 0 ? (
+            <div className="text-xs text-muted">Add a loan above to log a payment against it.</div>
+          ) : (
+            <form onSubmit={submitPayment} className="form">
               <div className="form-group">
-                <label className="form-label">Amount (DOP)<span>*</span></label>
-                <input className={`form-input ${errors.amount ? 'error' : ''}`} type="number" min="1" placeholder="e.g. 48154" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-                {errors.amount && <div className="form-error">{errors.amount}</div>}
+                <label className="form-label">Loan<span>*</span></label>
+                <select className="form-select" value={payDebtId} onChange={e => setForm(f => ({ ...f, debtId: e.target.value }))}>
+                  {activeDebts.map(d => <option key={d.id} value={d.id}>{d.name} — {fmt(d.balance)} {d.currency}</option>)}
+                </select>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Amount<span>*</span></label>
+                  <input className={`form-input ${errors.amount ? 'error' : ''}`} type="number" min="1" placeholder="e.g. 48154" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+                  {errors.amount && <div className="form-error">{errors.amount}</div>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Date<span>*</span></label>
+                  <input className={`form-input ${errors.date ? 'error' : ''}`} type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+                  {errors.date && <div className="form-error">{errors.date}</div>}
+                </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Date<span>*</span></label>
-                <input className={`form-input ${errors.date ? 'error' : ''}`} type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
-                {errors.date && <div className="form-error">{errors.date}</div>}
+                <label className="form-label">Notes</label>
+                <input className="form-input" type="text" placeholder="e.g. Full payoff" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Notes</label>
-              <input className="form-input" type="text" placeholder="e.g. Full payoff" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
-            </div>
-            <button type="submit" className="btn btn-primary">Log Payment</button>
-          </form>
+              <button type="submit" className="btn btn-primary">Log Payment</button>
+            </form>
+          )}
         </div>
 
         <div className="card">
-          <div className="card-title">Snowball Schedule</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', fontSize: '.85rem' }}>
-            {[
-              { step: 1, name: 'BHD',      target: 'May 30',  amount: '48,154 DOP' },
-              { step: 2, name: 'Banesco',   target: 'Jun 13',  amount: '70,744 DOP' },
-              { step: 3, name: 'Popular',   target: 'Jul 25',  amount: '146,805 DOP' },
-              { step: 4, name: 'Scotiabank',target: 'Feb 2028', amount: '2,711,000 DOP' },
-            ].map(s => {
-              const debt = state.debts.find(d => d.name === s.name)
-              const done = debt?.balance === 0
-              return (
-                <div key={s.step} style={{ padding: '.5rem .7rem', background: 'var(--bg-2)', borderRadius: 4, borderLeft: `3px solid ${done ? 'var(--green)' : 'var(--border)'}` }}>
+          <div className="card-title">Snowball Order</div>
+          {activeDebts.length === 0 ? (
+            <div className="text-xs text-muted">No active loans to order.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', fontSize: '.85rem' }}>
+              {activeDebts.map((d, i) => (
+                <div key={d.id} style={{ padding: '.5rem .7rem', background: 'var(--bg-2)', borderRadius: 4, borderLeft: `3px solid ${i === 0 ? 'var(--amber)' : 'var(--border)'}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span className={done ? 'text-green' : 'font-bold'}>{done ? '✓' : s.step + '.'} {s.name}</span>
-                    <span className="text-xs text-muted">{s.target}</span>
+                    <span className="font-bold">{i + 1}. {d.name}</span>
+                    <span className="text-xs text-muted">Min {fmt(d.minimumPayment)}/mo</span>
                   </div>
-                  <div className="text-xs text-muted">{s.amount}</div>
+                  <div className="text-xs text-muted">{fmt(d.balance)} {d.currency} remaining</div>
                 </div>
-              )
-            })}
-          </div>
-          <div className="alert alert-info" style={{ marginTop: '.75rem' }}>
-            <span>📊</span>
-            <div>Monthly surplus: ~142,207 DOP after small loans gone.</div>
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {payments.length > 0 && (
         <div className="table-wrap" style={{ marginTop: '1rem' }}>
           <table>
-            <thead><tr><th>Date</th><th>Account</th><th>Amount (DOP)</th><th>Notes</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>Loan</th><th>Amount</th><th>Notes</th><th></th></tr></thead>
             <tbody>
               {payments.slice(0, 20).map(p => (
                 <tr key={p.id}>
@@ -852,6 +1021,378 @@ function GivingSection() {
   )
 }
 
+// ── Simple horizontal bar list (generic, for Investing / Prop Firms charts) ────
+function SimpleBars({ data, formatValue = fmt }) {
+  if (!data.length) return <div className="text-xs text-muted">No data yet.</div>
+  const max = Math.max(...data.map(d => Math.abs(d.value)), 1)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+      {data.map(d => (
+        <div key={d.label}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.75rem', marginBottom: '.2rem' }}>
+            <span>{d.label}</span>
+            <strong className={d.value < 0 ? 'text-red' : ''}>{formatValue(d.value)}</strong>
+          </div>
+          <div style={{ height: 10, background: 'var(--bg-3)', borderRadius: 5 }}>
+            <div style={{ height: 10, width: `${Math.round((Math.abs(d.value) / max) * 100)}%`, background: d.color || 'var(--blue)', borderRadius: 5, transition: 'width .3s' }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Investing (self-investment: courses, certifications, etc.) ────────────────
+const INVESTMENT_CATEGORIES = ['Certification', 'Course', 'Book', 'Coaching / Mentorship', 'Software / Tool', 'Other']
+const INVESTMENT_STATUSES = ['planned', 'in_progress', 'completed']
+const INVESTMENT_STATUS_LABEL = { planned: 'Planned', in_progress: 'In Progress', completed: 'Completed' }
+const INVESTMENT_STATUS_BADGE = { planned: 'badge-grey', in_progress: 'badge-amber', completed: 'badge-green' }
+
+const BLANK_INVESTMENT = { date: '', item: '', provider: '', category: INVESTMENT_CATEGORIES[0], amount: '', currency: 'DOP', status: 'in_progress', notes: '' }
+
+function InvestingSection() {
+  const { state, dispatch } = useApp()
+  const today = todayISO()
+  const [form, setForm] = useState({ ...BLANK_INVESTMENT, date: today })
+  const [editEntry, setEditEntry] = useState(null)
+  const [error, setError] = useState('')
+
+  const rate = state.financeSettings?.usdToDopRate || 60
+  const toDOP = (e) => e.currency === 'USD' ? e.amount * rate : e.amount
+
+  const investments = [...(state.investments || [])].sort((a, b) => b.date.localeCompare(a.date))
+  const totalSpent = investments.reduce((s, i) => s + toDOP(i), 0)
+  const completedCount = investments.filter(i => i.status === 'completed').length
+
+  const byCategory = useMemo(() => {
+    const map = {}
+    investments.forEach(i => { map[i.category] = (map[i.category] || 0) + toDOP(i) })
+    return Object.entries(map).map(([category, total]) => ({ category, total })).sort((a, b) => b.total - a.total)
+  }, [investments, rate])
+
+  function validate(f) {
+    if (!f.item.trim()) return 'Item name is required'
+    if (!f.date) return 'Date is required'
+    if (!f.amount || isNaN(+f.amount) || +f.amount <= 0) return 'Enter a positive amount'
+    return ''
+  }
+
+  function submitNew(ev) {
+    ev.preventDefault()
+    const err = validate(form)
+    if (err) { setError(err); return }
+    dispatch({ type: 'ADD_INVESTMENT', payload: { ...form, amount: +form.amount } })
+    setForm({ ...BLANK_INVESTMENT, date: today })
+    setError('')
+  }
+
+  function submitEdit(ev) {
+    ev.preventDefault()
+    const err = validate(editEntry)
+    if (err) { setError(err); return }
+    dispatch({ type: 'UPDATE_INVESTMENT', payload: { ...editEntry, amount: +editEntry.amount } })
+    setEditEntry(null)
+    setError('')
+  }
+
+  return (
+    <div className="section">
+      <div className="section-header">
+        <div className="section-title">Investing in Yourself</div>
+        <span className="text-sm">Total: <strong className="text-amber">{fmt(totalSpent)} DOP eq.</strong> · {completedCount}/{investments.length} completed</span>
+      </div>
+
+      <div className="grid-2">
+        <div className="card">
+          <div className="card-title">{editEntry ? `Edit — ${editEntry.item}` : 'Log an Investment'}</div>
+          <form onSubmit={editEntry ? submitEdit : submitNew} className="form">
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Item<span>*</span></label>
+                <input className="form-input" placeholder="e.g. AZ-104 exam voucher" value={editEntry ? editEntry.item : form.item} onChange={e => editEntry ? setEditEntry(v => ({ ...v, item: e.target.value })) : setForm(f => ({ ...f, item: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Date<span>*</span></label>
+                <input className="form-input" type="date" value={editEntry ? editEntry.date : form.date} onChange={e => editEntry ? setEditEntry(v => ({ ...v, date: e.target.value })) : setForm(f => ({ ...f, date: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Provider / Platform</label>
+                <input className="form-input" placeholder="e.g. Microsoft Learn, Udemy" value={editEntry ? editEntry.provider : form.provider} onChange={e => editEntry ? setEditEntry(v => ({ ...v, provider: e.target.value })) : setForm(f => ({ ...f, provider: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Category</label>
+                <select className="form-select" value={editEntry ? editEntry.category : form.category} onChange={e => editEntry ? setEditEntry(v => ({ ...v, category: e.target.value })) : setForm(f => ({ ...f, category: e.target.value }))}>
+                  {INVESTMENT_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Amount<span>*</span></label>
+                <input className="form-input" type="number" min="0" value={editEntry ? editEntry.amount : form.amount} onChange={e => editEntry ? setEditEntry(v => ({ ...v, amount: e.target.value })) : setForm(f => ({ ...f, amount: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Currency</label>
+                <select className="form-select" value={editEntry ? editEntry.currency : form.currency} onChange={e => editEntry ? setEditEntry(v => ({ ...v, currency: e.target.value })) : setForm(f => ({ ...f, currency: e.target.value }))}>
+                  <option value="DOP">DOP</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Status</label>
+              <select className="form-select" value={editEntry ? editEntry.status : form.status} onChange={e => editEntry ? setEditEntry(v => ({ ...v, status: e.target.value })) : setForm(f => ({ ...f, status: e.target.value }))}>
+                {INVESTMENT_STATUSES.map(s => <option key={s} value={s}>{INVESTMENT_STATUS_LABEL[s]}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Notes</label>
+              <input className="form-input" value={editEntry ? editEntry.notes : form.notes} onChange={e => editEntry ? setEditEntry(v => ({ ...v, notes: e.target.value })) : setForm(f => ({ ...f, notes: e.target.value }))} />
+            </div>
+            {error && <div className="form-error">{error}</div>}
+            <div style={{ display: 'flex', gap: '.5rem' }}>
+              <button type="submit" className="btn btn-primary">{editEntry ? 'Save Changes' : 'Log Investment'}</button>
+              {editEntry && <button type="button" className="btn btn-ghost" onClick={() => { setEditEntry(null); setError('') }}>Cancel</button>}
+            </div>
+          </form>
+        </div>
+
+        <div className="card">
+          <div className="card-title">Spend by Category</div>
+          <SimpleBars data={byCategory.map(c => ({ label: c.category, value: c.total, color: 'var(--amber)' }))} formatValue={v => `${fmt(v)} DOP eq.`} />
+        </div>
+      </div>
+
+      {investments.length > 0 && (
+        <div className="table-wrap" style={{ marginTop: '1rem' }}>
+          <table>
+            <thead><tr><th>Date</th><th>Item</th><th>Provider</th><th>Category</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {investments.map(i => (
+                <tr key={i.id}>
+                  <td>{formatDate(i.date)}</td>
+                  <td className="font-bold">{i.item}</td>
+                  <td className="text-muted">{i.provider || '—'}</td>
+                  <td>{i.category}</td>
+                  <td>{fmt(i.amount)} {i.currency}</td>
+                  <td><span className={`badge ${INVESTMENT_STATUS_BADGE[i.status]}`}>{INVESTMENT_STATUS_LABEL[i.status]}</span></td>
+                  <td style={{ display: 'flex', gap: '.3rem' }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setEditEntry(i); setError('') }}>✏️</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => window.confirm(`Delete "${i.item}"?`) && dispatch({ type: 'DELETE_INVESTMENT', payload: i.id })}>✕</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Prop Firms ─────────────────────────────────────────────────────────────────
+const PROP_FIRM_STATUSES = ['evaluating', 'passed', 'funded', 'blown']
+const PROP_FIRM_STATUS_LABEL = { evaluating: 'Evaluating', passed: 'Passed Eval', funded: 'Funded', blown: 'Blown' }
+const PROP_FIRM_STATUS_BADGE = { evaluating: 'badge-grey', passed: 'badge-blue', funded: 'badge-green', blown: 'badge-red' }
+
+const BLANK_PROP_FIRM = { firm: '', accountSize: '', cost: '', currency: 'USD', dateBought: '', status: 'evaluating', payout: '', payoutDate: '', notes: '' }
+
+function PropFirmsSection() {
+  const { state, dispatch } = useApp()
+  const today = todayISO()
+  const [form, setForm] = useState({ ...BLANK_PROP_FIRM, dateBought: today })
+  const [editEntry, setEditEntry] = useState(null)
+  const [error, setError] = useState('')
+
+  const rate = state.financeSettings?.usdToDopRate || 60
+  const toDOP = (currency, amount) => currency === 'USD' ? amount * rate : amount
+
+  const accounts = [...(state.propFirmAccounts || [])].sort((a, b) => b.dateBought.localeCompare(a.dateBought))
+  const totalSpent = accounts.reduce((s, a) => s + toDOP(a.currency, a.cost), 0)
+  const totalPayout = accounts.reduce((s, a) => s + toDOP(a.currency, a.payout || 0), 0)
+  const netPL = totalPayout - totalSpent
+  const decided = accounts.filter(a => a.status === 'passed' || a.status === 'funded' || a.status === 'blown')
+  const winRate = decided.length ? Math.round((accounts.filter(a => a.status === 'passed' || a.status === 'funded').length / decided.length) * 100) : null
+
+  const byFirm = useMemo(() => {
+    const map = {}
+    accounts.forEach(a => {
+      map[a.firm] = map[a.firm] || { spent: 0, payout: 0 }
+      map[a.firm].spent += toDOP(a.currency, a.cost)
+      map[a.firm].payout += toDOP(a.currency, a.payout || 0)
+    })
+    return Object.entries(map).map(([firm, v]) => ({ firm, ...v })).sort((a, b) => b.spent - a.spent)
+  }, [accounts, rate])
+
+  function validate(f) {
+    if (!f.firm.trim()) return 'Firm name is required'
+    if (!f.dateBought) return 'Purchase date is required'
+    if (!f.cost || isNaN(+f.cost) || +f.cost < 0) return 'Enter a valid cost'
+    return ''
+  }
+
+  function submitNew(ev) {
+    ev.preventDefault()
+    const err = validate(form)
+    if (err) { setError(err); return }
+    dispatch({ type: 'ADD_PROP_FIRM', payload: { ...form, cost: +form.cost, accountSize: +form.accountSize || 0, payout: +form.payout || 0 } })
+    setForm({ ...BLANK_PROP_FIRM, dateBought: today })
+    setError('')
+  }
+
+  function submitEdit(ev) {
+    ev.preventDefault()
+    const err = validate(editEntry)
+    if (err) { setError(err); return }
+    dispatch({ type: 'UPDATE_PROP_FIRM', payload: { ...editEntry, cost: +editEntry.cost, accountSize: +editEntry.accountSize || 0, payout: +editEntry.payout || 0 } })
+    setEditEntry(null)
+    setError('')
+  }
+
+  const f = editEntry || form
+  const setF = (patch) => editEntry ? setEditEntry(v => ({ ...v, ...patch })) : setForm(v => ({ ...v, ...patch }))
+
+  return (
+    <div className="section">
+      <div className="section-header">
+        <div className="section-title">Prop Firms</div>
+      </div>
+
+      <div className="grid-4" style={{ marginBottom: '1rem' }}>
+        <div className="kpi-card">
+          <div className="kpi-label">💸 Total Spent</div>
+          <div className="kpi-value" style={{ fontSize: '1.1rem' }}>{fmt(totalSpent)} DOP eq.</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">💰 Total Payout</div>
+          <div className="kpi-value" style={{ fontSize: '1.1rem', color: 'var(--green)' }}>{fmt(totalPayout)} DOP eq.</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">📊 Net P/L</div>
+          <div className="kpi-value" style={{ fontSize: '1.1rem', color: netPL >= 0 ? 'var(--green)' : 'var(--red)' }}>{netPL >= 0 ? '+' : ''}{fmt(netPL)} DOP eq.</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">🎯 Win Rate</div>
+          <div className="kpi-value" style={{ fontSize: '1.1rem' }}>{winRate === null ? '—' : `${winRate}%`}</div>
+          <div className="kpi-sub">{decided.length} decided / {accounts.length} total</div>
+        </div>
+      </div>
+
+      <div className="grid-2">
+        <div className="card">
+          <div className="card-title">{editEntry ? `Edit — ${editEntry.firm}` : 'Log a Prop Firm Account'}</div>
+          <form onSubmit={editEntry ? submitEdit : submitNew} className="form">
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Firm<span>*</span></label>
+                <input className="form-input" placeholder="e.g. FTMO" value={f.firm} onChange={e => setF({ firm: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Account Size</label>
+                <input className="form-input" type="number" min="0" placeholder="e.g. 100000" value={f.accountSize} onChange={e => setF({ accountSize: e.target.value })} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Cost Paid<span>*</span></label>
+                <input className="form-input" type="number" min="0" value={f.cost} onChange={e => setF({ cost: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Currency</label>
+                <select className="form-select" value={f.currency} onChange={e => setF({ currency: e.target.value })}>
+                  <option value="USD">USD</option>
+                  <option value="DOP">DOP</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Date Purchased<span>*</span></label>
+                <input className="form-input" type="date" value={f.dateBought} onChange={e => setF({ dateBought: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Status</label>
+                <select className="form-select" value={f.status} onChange={e => setF({ status: e.target.value })}>
+                  {PROP_FIRM_STATUSES.map(s => <option key={s} value={s}>{PROP_FIRM_STATUS_LABEL[s]}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Payout Received</label>
+                <input className="form-input" type="number" min="0" placeholder="0" value={f.payout} onChange={e => setF({ payout: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Payout Date</label>
+                <input className="form-input" type="date" value={f.payoutDate} onChange={e => setF({ payoutDate: e.target.value })} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Notes</label>
+              <input className="form-input" value={f.notes} onChange={e => setF({ notes: e.target.value })} />
+            </div>
+            {error && <div className="form-error">{error}</div>}
+            <div style={{ display: 'flex', gap: '.5rem' }}>
+              <button type="submit" className="btn btn-primary">{editEntry ? 'Save Changes' : 'Log Account'}</button>
+              {editEntry && <button type="button" className="btn btn-ghost" onClick={() => { setEditEntry(null); setError('') }}>Cancel</button>}
+            </div>
+          </form>
+        </div>
+
+        <div className="card">
+          <div className="card-title">Spend vs. Payout by Firm</div>
+          {byFirm.length === 0 ? <div className="text-xs text-muted">No accounts logged yet.</div> : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '.85rem' }}>
+              {byFirm.map(row => (
+                <div key={row.firm}>
+                  <div className="font-bold text-sm" style={{ marginBottom: '.3rem' }}>{row.firm}</div>
+                  <SimpleBars
+                    data={[
+                      { label: 'Spent', value: row.spent, color: 'var(--red)' },
+                      { label: 'Payout', value: row.payout, color: 'var(--green)' },
+                    ]}
+                    formatValue={v => `${fmt(v)} DOP eq.`}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {accounts.length > 0 && (
+        <div className="table-wrap" style={{ marginTop: '1rem' }}>
+          <table>
+            <thead><tr><th>Date</th><th>Firm</th><th>Size</th><th>Cost</th><th>Status</th><th>Payout</th><th>Net</th><th></th></tr></thead>
+            <tbody>
+              {accounts.map(a => {
+                const net = toDOP(a.currency, a.payout || 0) - toDOP(a.currency, a.cost)
+                return (
+                  <tr key={a.id}>
+                    <td>{formatDate(a.dateBought)}</td>
+                    <td className="font-bold">{a.firm}</td>
+                    <td className="text-muted">{a.accountSize ? fmt(a.accountSize) : '—'}</td>
+                    <td>{fmt(a.cost)} {a.currency}</td>
+                    <td><span className={`badge ${PROP_FIRM_STATUS_BADGE[a.status]}`}>{PROP_FIRM_STATUS_LABEL[a.status]}</span></td>
+                    <td className="text-green">{a.payout ? `${fmt(a.payout)} ${a.currency}` : '—'}</td>
+                    <td className={net >= 0 ? 'text-green' : 'text-red'}>{net >= 0 ? '+' : ''}{fmt(net)}</td>
+                    <td style={{ display: 'flex', gap: '.3rem' }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { setEditEntry(a); setError('') }}>✏️</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => window.confirm(`Delete "${a.firm}" account?`) && dispatch({ type: 'DELETE_PROP_FIRM', payload: a.id })}>✕</button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Finance Page ─────────────────────────────────────────────────────────
 export default function Finance() {
   const [tab, setTab] = useState('debt')
@@ -862,14 +1403,16 @@ export default function Finance() {
         <div className="page-subtitle">Goal: Debt-free · $12k–$25k/month passive income · 10% giving automated</div>
       </div>
       <div className="tabs">
-        {[['spending','💸 Spending'], ['debt','Debt Snowball'], ['income','Income'], ['giving','Giving']].map(([k,l]) => (
+        {[['spending','💸 Spending'], ['debt','Debt Snowball'], ['investing','📚 Investing'], ['propfirms','🎯 Prop Firms'], ['income','Income'], ['giving','Giving']].map(([k,l]) => (
           <button key={k} className={`tab-btn ${tab === k ? 'active' : ''}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
-      {tab === 'spending' && <SpendingSection />}
-      {tab === 'debt'     && <DebtSection />}
-      {tab === 'income'   && <IncomeSection />}
-      {tab === 'giving'   && <GivingSection />}
+      {tab === 'spending'  && <SpendingSection />}
+      {tab === 'debt'      && <DebtSection />}
+      {tab === 'investing' && <InvestingSection />}
+      {tab === 'propfirms' && <PropFirmsSection />}
+      {tab === 'income'    && <IncomeSection />}
+      {tab === 'giving'    && <GivingSection />}
     </div>
   )
 }

@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react'
 import { useApp } from '../store/AppContext.jsx'
 import { todayISO, formatDate, daysUntil } from '../utils/dateUtils.js'
+import SprintScorecard from '../components/SprintScorecard.jsx'
+
+function newObjectiveId() { return 'obj_' + Math.random().toString(36).slice(2, 8) }
 
 const SPRINT_STATUSES = ['upcoming', 'active', 'completed', 'cancelled']
 const STATUS_BADGE = { upcoming: 'badge-grey', active: 'badge-blue', completed: 'badge-green', cancelled: 'badge-red' }
@@ -13,13 +16,20 @@ const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => CURRENT_YEAR + i - 1)
 function blankSprint(year = CURRENT_YEAR) {
   return {
     name: '', year, dates: '', reviewDueDate: '', status: 'upcoming',
-    milestones: ['']
+    milestones: [''],
+    objectives: [{ id: newObjectiveId(), label: '', target: '', current: '', done: false }],
   }
 }
 
 // ── Sprint modal (add / edit) ─────────────────────────────────────────────────
 function SprintModal({ initial, title, onSave, onClose }) {
-  const [form, setForm] = useState({ ...initial, milestones: [...(initial.milestones || [''])] })
+  const [form, setForm] = useState({
+    ...initial,
+    milestones: [...(initial.milestones || [''])],
+    objectives: (initial.objectives || []).length
+      ? initial.objectives.map(o => ({ ...o }))
+      : [{ id: newObjectiveId(), label: '', target: '', current: '', done: false }],
+  })
 
   function setMilestone(i, val) {
     setForm(f => { const m = [...f.milestones]; m[i] = val; return { ...f, milestones: m } })
@@ -31,9 +41,23 @@ function SprintModal({ initial, title, onSave, onClose }) {
     setForm(f => ({ ...f, milestones: f.milestones.filter((_, idx) => idx !== i) }))
   }
 
+  function setObjective(i, key, val) {
+    setForm(f => { const o = [...f.objectives]; o[i] = { ...o[i], [key]: val }; return { ...f, objectives: o } })
+  }
+  function addObjective() {
+    setForm(f => ({ ...f, objectives: [...f.objectives, { id: newObjectiveId(), label: '', target: '', current: '', done: false }] }))
+  }
+  function removeObjective(i) {
+    setForm(f => ({ ...f, objectives: f.objectives.filter((_, idx) => idx !== i) }))
+  }
+
   function submit(ev) {
     ev.preventDefault()
-    onSave({ ...form, milestones: form.milestones.filter(m => m.trim()) })
+    onSave({
+      ...form,
+      milestones: form.milestones.filter(m => m.trim()),
+      objectives: form.objectives.filter(o => o.label.trim()),
+    })
   }
 
   return (
@@ -86,6 +110,27 @@ function SprintModal({ initial, title, onSave, onClose }) {
                 />
                 {form.milestones.length > 1 && (
                   <button type="button" className="btn btn-danger btn-sm" onClick={() => removeMilestone(i)}>✕</button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="form-group">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.4rem' }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>Live Scorecard Objectives</label>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={addObjective}>+ Add</button>
+            </div>
+            <div className="form-hint" style={{ marginBottom: '.4rem' }}>Shown on the "Live Scorecard" tab and the Dashboard — update "Current" any time from there.</div>
+            {form.objectives.map((o, i) => (
+              <div key={o.id} style={{ display: 'flex', gap: '.4rem', marginBottom: '.35rem', alignItems: 'center' }}>
+                <input className="form-input" style={{ flex: 2 }} type="text" placeholder="Objective (e.g. Weight)" value={o.label} onChange={e => setObjective(i, 'label', e.target.value)} />
+                <input className="form-input" style={{ flex: 1 }} type="text" placeholder="Target" value={o.target} onChange={e => setObjective(i, 'target', e.target.value)} />
+                <input className="form-input" style={{ flex: 1 }} type="text" placeholder="Current" value={o.current} onChange={e => setObjective(i, 'current', e.target.value)} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: '.25rem', fontSize: '.75rem', whiteSpace: 'nowrap' }}>
+                  <input type="checkbox" checked={!!o.done} onChange={e => setObjective(i, 'done', e.target.checked)} /> Done
+                </label>
+                {form.objectives.length > 1 && (
+                  <button type="button" className="btn btn-danger btn-sm" onClick={() => removeObjective(i)}>✕</button>
                 )}
               </div>
             ))}
@@ -234,53 +279,30 @@ function QBRForm({ sprints, existingQBR, onSave, onCancel }) {
   )
 }
 
-// ── Sprint 1 live scorecard (auto from state) ─────────────────────────────────
-function Sprint1LiveScorecard() {
-  const { state } = useApp()
-  const latestWeight = state.weightLog.slice(-1)[0]?.weight ?? '—'
-  const langHours    = state.languageSessions.reduce((x, l) => x + (l.durationMinutes || 30) / 60, 0).toFixed(1)
-  const ai900        = state.certifications.find(c => c.id === 'ai900')
-  const sc300        = state.certifications.find(c => c.id === 'sc300')
-  const smallLoans   = state.debts.filter(d => d.id !== 'scotiabank').reduce((x, d) => x + d.balance, 0)
+// ── Live scorecard (any sprint, selectable) ───────────────────────────────────
+function LiveScorecardTab({ sprints }) {
+  const activeSprint = sprints.find(s => s.status === 'active') || sprints[0] || null
+  const [sprintId, setSprintId] = useState(activeSprint?.id || '')
+  const selected = sprints.find(s => s.id === sprintId) || activeSprint
 
-  const rows = [
-    { dept: 'Body',    kpi: 'Weight',              target: '197 lb',           current: `${latestWeight} lb`,             ok: +latestWeight <= 197 },
-    { dept: 'Body',    kpi: 'Workout compliance',   target: '≥85%',             current: '—',                              ok: null },
-    { dept: 'Mind',    kpi: 'English study hours',  target: '≥60 hrs',          current: `${langHours} hrs`,               ok: +langHours >= 60 },
-    { dept: 'Certs',   kpi: 'AI-900',               target: 'Pass by Jun 30',   current: ai900?.status ?? '—',             ok: ai900?.status === 'passed' },
-    { dept: 'Certs',   kpi: 'SC-300',               target: 'Pass by Jul 31',   current: sc300?.status ?? '—',             ok: sc300?.status === 'passed' },
-    { dept: 'Finance', kpi: 'BHD+Banesco+Popular',  target: '$0 DOP by Jun 15', current: `${(smallLoans/1000).toFixed(0)}k DOP`, ok: smallLoans === 0 },
-  ]
-  const onTrack = rows.filter(r => r.ok === true).length
-  const total   = rows.filter(r => r.ok !== null).length
+  if (sprints.length === 0) {
+    return (
+      <div className="empty-state card">
+        <div className="empty-state-icon">🎯</div>
+        <div className="empty-state-text">No sprints yet. Click "+ Sprint" to add your first, then give it some objectives.</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <div className="card-title" style={{ marginBottom: 0 }}>Sprint 1 Live Scorecard (May–Jul 2026)</div>
-        <span className={`badge ${onTrack === total ? 'badge-green' : onTrack >= total / 2 ? 'badge-amber' : 'badge-red'}`}>{onTrack}/{total} on track</span>
+    <div>
+      <div className="form-group" style={{ maxWidth: 320, marginBottom: '.75rem' }}>
+        <label className="form-label">Sprint</label>
+        <select className="form-select" value={selected?.id || ''} onChange={e => setSprintId(e.target.value)}>
+          {sprints.map(s => <option key={s.id} value={s.id}>{s.name} · {s.dates}{s.status === 'active' ? ' (active)' : ''}</option>)}
+        </select>
       </div>
-      <div className="table-wrap">
-        <table>
-          <thead><tr><th>Dept</th><th>KPI</th><th>Target</th><th>Current</th><th>Status</th></tr></thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={r.kpi}>
-                <td><span className="badge badge-grey">{r.dept}</span></td>
-                <td>{r.kpi}</td>
-                <td className="text-muted">{r.target}</td>
-                <td className="font-bold">{r.current}</td>
-                <td>
-                  {r.ok === null
-                    ? <span className="badge badge-grey">Manual</span>
-                    : <span className={`badge ${r.ok ? 'badge-green' : 'badge-amber'}`}>{r.ok ? '✓ Done' : 'Pending'}</span>
-                  }
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <SprintScorecard sprint={selected} />
     </div>
   )
 }
@@ -345,7 +367,7 @@ export default function QBR() {
 
       <div className="tabs">
         <button className={`tab-btn ${tab === 'roadmap' ? 'active' : ''}`} onClick={() => setTab('roadmap')}>🗺 Roadmap</button>
-        <button className={`tab-btn ${tab === 'live' ? 'active' : ''}`} onClick={() => setTab('live')}>⚡ Sprint 1 Live</button>
+        <button className={`tab-btn ${tab === 'live' ? 'active' : ''}`} onClick={() => setTab('live')}>⚡ Live Scorecard</button>
         <button className={`tab-btn ${tab === 'history' ? 'active' : ''}`} onClick={() => setTab('history')}>📋 Reviews ({reviews.length})</button>
       </div>
 
@@ -425,10 +447,10 @@ export default function QBR() {
         </div>
       )}
 
-      {/* ── SPRINT 1 LIVE ── */}
+      {/* ── LIVE SCORECARD ── */}
       {tab === 'live' && (
         <div className="section">
-          <Sprint1LiveScorecard />
+          <LiveScorecardTab sprints={sprints} />
         </div>
       )}
 

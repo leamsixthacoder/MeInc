@@ -105,7 +105,70 @@ function reducer(state, action) {
 
     // FINANCE
     case 'UPDATE_DEBT_BALANCE': {
-      return { ...state, debts: state.debts.map(d => d.id === action.payload.id ? { ...d, balance: action.payload.balance, status: action.payload.balance <= 0 ? 'paid' : 'active' } : d) }
+      return { ...state, debts: state.debts.map(d => d.id === action.payload.id ? { ...d, balance: action.payload.balance, status: action.payload.balance <= 0 ? 'completed' : 'active' } : d) }
+    }
+    case 'ADD_DEBT': {
+      const maxPriority = Math.max(0, ...state.debts.filter(d => d.status === 'active').map(d => d.priority || 0))
+      const initialBalance = +action.payload.initialBalance || 0
+      const entry = {
+        id: newId('debt'),
+        name: action.payload.name,
+        currency: action.payload.currency || 'DOP',
+        initialBalance,
+        balance: action.payload.balance != null ? +action.payload.balance : initialBalance,
+        interestRate: +action.payload.interestRate || 0,
+        minimumPayment: +action.payload.minimumPayment || 0,
+        priority: maxPriority + 1,
+        status: 'active',
+      }
+      return { ...state, debts: [...state.debts, entry] }
+    }
+    case 'UPDATE_DEBT': {
+      return { ...state, debts: state.debts.map(d => d.id === action.payload.id ? { ...d, ...action.payload } : d) }
+    }
+    case 'DELETE_DEBT': {
+      return {
+        ...state,
+        debts: state.debts.filter(d => d.id !== action.payload),
+        debtPayments: state.debtPayments.filter(p => p.debtId !== action.payload),
+      }
+    }
+    case 'COMPLETE_DEBT': {
+      return { ...state, debts: state.debts.map(d => d.id === action.payload ? { ...d, status: 'completed', balance: 0 } : d) }
+    }
+    case 'RESET_DEBT': {
+      const { id, name, currency, initialBalance, interestRate, minimumPayment } = action.payload
+      const old = state.debts.find(d => d.id === id)
+      if (!old) return state
+      const freshInitial = +initialBalance || 0
+      const maxPriority = Math.max(0, ...state.debts.filter(d => d.status === 'active').map(d => d.priority || 0))
+      const fresh = {
+        id: newId('debt'),
+        name: name?.trim() || old.name,
+        currency: currency || old.currency,
+        initialBalance: freshInitial,
+        balance: freshInitial,
+        interestRate: interestRate != null ? +interestRate : old.interestRate,
+        minimumPayment: minimumPayment != null ? +minimumPayment : old.minimumPayment,
+        priority: maxPriority + 1,
+        status: 'active',
+      }
+      return {
+        ...state,
+        debts: [...state.debts.map(d => d.id === id ? { ...d, status: 'completed' } : d), fresh],
+      }
+    }
+    case 'REORDER_DEBT': {
+      const { id, direction } = action.payload
+      const active = state.debts.filter(d => d.status === 'active').sort((a, b) => a.priority - b.priority)
+      const idx = active.findIndex(d => d.id === id)
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+      if (idx < 0 || swapIdx < 0 || swapIdx >= active.length) return state
+      const a = active[idx], b = active[swapIdx]
+      return {
+        ...state,
+        debts: state.debts.map(d => d.id === a.id ? { ...d, priority: b.priority } : d.id === b.id ? { ...d, priority: a.priority } : d),
+      }
     }
     case 'ADD_DEBT_PAYMENT': {
       const entry = { id: newId('dp'), ...action.payload }
@@ -258,6 +321,40 @@ function reducer(state, action) {
     }
     case 'DELETE_SPRINT': {
       return { ...state, sprints: (state.sprints || []).filter(s => s.id !== action.payload) }
+    }
+    case 'UPDATE_SPRINT_OBJECTIVE': {
+      const { sprintId, objectiveId, patch } = action.payload
+      return {
+        ...state,
+        sprints: (state.sprints || []).map(s => s.id !== sprintId ? s : {
+          ...s,
+          objectives: (s.objectives || []).map(o => o.id === objectiveId ? { ...o, ...patch } : o),
+        }),
+      }
+    }
+
+    // INVESTING (education / self-investment spend)
+    case 'ADD_INVESTMENT': {
+      const entry = { id: newId('inv'), ...action.payload }
+      return { ...state, investments: [...(state.investments || []), entry] }
+    }
+    case 'UPDATE_INVESTMENT': {
+      return { ...state, investments: (state.investments || []).map(i => i.id === action.payload.id ? { ...i, ...action.payload } : i) }
+    }
+    case 'DELETE_INVESTMENT': {
+      return { ...state, investments: (state.investments || []).filter(i => i.id !== action.payload) }
+    }
+
+    // PROP FIRMS
+    case 'ADD_PROP_FIRM': {
+      const entry = { id: newId('pf'), ...action.payload }
+      return { ...state, propFirmAccounts: [...(state.propFirmAccounts || []), entry] }
+    }
+    case 'UPDATE_PROP_FIRM': {
+      return { ...state, propFirmAccounts: (state.propFirmAccounts || []).map(p => p.id === action.payload.id ? { ...p, ...action.payload } : p) }
+    }
+    case 'DELETE_PROP_FIRM': {
+      return { ...state, propFirmAccounts: (state.propFirmAccounts || []).filter(p => p.id !== action.payload) }
     }
 
     // QBR

@@ -5,14 +5,29 @@ const STORAGE_KEY = 'me_inc_v1'
 export function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return structuredClone(INITIAL_DATA)
+    if (!raw) return migrateSprintObjectives(structuredClone(INITIAL_DATA))
     const parsed = JSON.parse(raw)
     // Merge with initial data to pick up any new keys added in updates
-    return deepMerge(structuredClone(INITIAL_DATA), parsed)
+    return migrateSprintObjectives(deepMerge(structuredClone(INITIAL_DATA), parsed))
   } catch {
     console.warn('localStorage read failed, using initial data')
     return structuredClone(INITIAL_DATA)
   }
+}
+
+// One-time upgrade path: sprints saved before the Live Scorecard became
+// editable have no `objectives` array. Seed one from their existing
+// milestones so the scorecard isn't empty after the upgrade.
+function migrateSprintObjectives(data) {
+  if (!Array.isArray(data.sprints)) return data
+  data.sprints = data.sprints.map(s => {
+    if (Array.isArray(s.objectives)) return s
+    const objectives = (s.milestones || []).map((m, i) => ({
+      id: `obj_migrated_${s.id}_${i}`, label: m, target: '', current: '', done: false,
+    }))
+    return { ...s, objectives }
+  })
+  return data
 }
 
 export function saveData(data) {

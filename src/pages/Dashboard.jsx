@@ -2,6 +2,12 @@ import React, { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../store/AppContext.jsx'
 import { todayISO, formatDate, daysUntil, isMonday } from '../utils/dateUtils.js'
+import SprintScorecard from '../components/SprintScorecard.jsx'
+
+function getActiveSprint(sprints) {
+  return (sprints || []).find(s => s.status === 'active')
+    || [...(sprints || [])].sort((a, b) => b.year - a.year)[0]
+}
 
 // Default fallback items in case state hasn't loaded yet
 const DEFAULT_MORNING = [
@@ -176,9 +182,16 @@ function QuickMetrics() {
     : null
   const weightTarget = 197 // Sprint 1 target
 
-  // Debt
-  const totalDebt = state.debts.reduce((s, d) => s + d.balance, 0)
-  const smallLoans = state.debts.filter(d => d.id !== 'scotiabank').reduce((s, d) => s + d.balance, 0)
+  // Debt — "biggest loan" and "everything else" generalize the old BHD/Banesco/
+  // Popular vs. Scotiabank split so this keeps working as loans are added, reset, or removed.
+  const activeDebts = state.debts.filter(d => d.status === 'active')
+  const totalDebt = activeDebts.reduce((s, d) => s + d.balance, 0)
+  const totalDebtInitial = state.debts.reduce((s, d) => s + (d.initialBalance || 0), 0)
+  const totalDebtPaid = state.debts.reduce((s, d) => s + (d.initialBalance - d.balance), 0)
+  const biggestDebt = [...activeDebts].sort((a, b) => b.balance - a.balance)[0]
+  const otherDebts = activeDebts.filter(d => d.id !== biggestDebt?.id)
+  const otherDebtsBalance = otherDebts.reduce((s, d) => s + d.balance, 0)
+  const otherDebtsInitial = otherDebts.reduce((s, d) => s + d.initialBalance, 0)
 
   // Language hours
   const langHours = state.languageSessions.reduce((s, l) => s + (l.durationMinutes || 30) / 60, 0)
@@ -191,7 +204,6 @@ function QuickMetrics() {
   // Days until key deadlines
   const daysAI900 = daysUntil('2026-06-30')
   const daysSC300 = daysUntil('2026-07-31')
-  const daysDebt  = daysUntil('2026-06-15')
 
   return (
     <div className="grid-4">
@@ -207,15 +219,15 @@ function QuickMetrics() {
         </div>
       </div>
 
-      {/* Small Debt */}
+      {/* Other Loans (everything except the current biggest balance) */}
       <div className="kpi-card">
-        <div className="kpi-label">💳 Small Loans</div>
-        <div className="kpi-value" style={{ color: smallLoans === 0 ? 'var(--green)' : 'var(--text-1)' }}>
-          {smallLoans === 0 ? '✓ PAID' : `${(smallLoans / 1000).toFixed(0)}k DOP`}
+        <div className="kpi-label">💳 Other Loans</div>
+        <div className="kpi-value" style={{ color: otherDebtsBalance === 0 ? 'var(--green)' : 'var(--text-1)' }}>
+          {otherDebts.length === 0 ? '—' : otherDebtsBalance === 0 ? '✓ PAID' : `${(otherDebtsBalance / 1000).toFixed(0)}k DOP`}
         </div>
-        <div className="kpi-sub">{daysDebt > 0 ? `${daysDebt}d to Jun 15 target` : 'Deadline passed'}</div>
+        <div className="kpi-sub">{otherDebts.length} loan{otherDebts.length === 1 ? '' : 's'} besides {biggestDebt?.name || '—'}</div>
         <div className="progress-bar" style={{ marginTop: '.4rem' }}>
-          <div className="progress-fill progress-fill-green" style={{ width: `${Math.round(((265703 - smallLoans) / 265703) * 100)}%` }} />
+          <div className="progress-fill progress-fill-green" style={{ width: `${otherDebtsInitial > 0 ? Math.round(((otherDebtsInitial - otherDebtsBalance) / otherDebtsInitial) * 100) : 0}%` }} />
         </div>
       </div>
 
@@ -257,9 +269,9 @@ function QuickMetrics() {
       <div className="kpi-card">
         <div className="kpi-label">🏦 Total Debt</div>
         <div className="kpi-value" style={{ fontSize: '1.1rem' }}>{(totalDebt / 1000000).toFixed(2)}M DOP</div>
-        <div className="kpi-sub">Scotiabank: {(state.debts.find(d => d.id === 'scotiabank')?.balance / 1000).toFixed(0)}k DOP</div>
+        <div className="kpi-sub">{biggestDebt ? `Largest: ${biggestDebt.name} — ${(biggestDebt.balance / 1000).toFixed(0)}k DOP` : 'No active loans'}</div>
         <div className="progress-bar" style={{ marginTop: '.4rem' }}>
-          <div className="progress-fill progress-fill-amber" style={{ width: `${Math.round((1 - totalDebt / 2976703) * 100)}%` }} />
+          <div className="progress-fill progress-fill-amber" style={{ width: `${totalDebtInitial > 0 ? Math.round((totalDebtPaid / totalDebtInitial) * 100) : 0}%` }} />
         </div>
       </div>
     </div>
@@ -397,55 +409,16 @@ function QuickLog() {
 }
 
 // ── Sprint 1 Scoreboard ───────────────────────────────────────────────────────
-function Sprint1Scoreboard() {
-  const { state } = useApp()
-  const ai900 = state.certifications.find(c => c.id === 'ai900')
-  const sc300 = state.certifications.find(c => c.id === 'sc300')
-  const smallLoans = state.debts.filter(d => d.id !== 'scotiabank').reduce((s, d) => s + d.balance, 0)
-  const langHours = state.languageSessions.reduce((s, l) => s + (l.durationMinutes || 30) / 60, 0)
-  const latestWeight = state.weightLog[state.weightLog.length - 1]?.weight ?? 203
-
-  const rows = [
-    { label: 'Weight → 197 lb',       current: `${latestWeight} lb`,         target: '197 lb',  done: latestWeight <= 197 },
-    { label: 'English study → 60 hrs', current: `${langHours.toFixed(1)} hrs`,target: '60 hrs',  done: langHours >= 60 },
-    { label: 'AI-900 pass',            current: ai900?.status,               target: 'Pass',     done: ai900?.status === 'passed' },
-    { label: 'SC-300 pass',            current: sc300?.status,               target: 'Pass',     done: sc300?.status === 'passed' },
-    { label: 'BHD/Banesco/Popular = 0',current: `${(smallLoans/1000).toFixed(0)}k DOP`, target: '0', done: smallLoans === 0 },
-  ]
-  const done = rows.filter(r => r.done).length
-
-  return (
-    <div className="card">
-      <div className="card-header">
-        <div className="card-title" style={{ marginBottom: 0 }}>Sprint 1 Scoreboard (May–Jul 2026)</div>
-        <span className={`badge ${done === rows.length ? 'badge-green' : done >= 4 ? 'badge-amber' : 'badge-grey'}`}>{done}/{rows.length} complete</span>
-      </div>
-      <div className="table-wrap">
-        <table>
-          <thead><tr><th>Objective</th><th>Current</th><th>Target</th><th>Status</th></tr></thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={r.label}>
-                <td>{r.label}</td>
-                <td>{r.current}</td>
-                <td>{r.target}</td>
-                <td><span className={`badge ${r.done ? 'badge-green' : 'badge-grey'}`}>{r.done ? '✓ Done' : 'Pending'}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
+  const { state } = useApp()
+  const activeSprint = getActiveSprint(state.sprints)
+
   return (
     <div>
       <div className="page-header">
         <div className="page-title">Good morning, Jose ✦</div>
-        <div className="page-subtitle">Me, Inc. · CEO Dashboard · Sprint 1: May–July 2026</div>
+        <div className="page-subtitle">Me, Inc. · CEO Dashboard{activeSprint ? ` · ${activeSprint.name}: ${activeSprint.dates}` : ''}</div>
       </div>
 
       <div className="section">
@@ -468,7 +441,7 @@ export default function Dashboard() {
       </div>
 
       <div className="section">
-        <Sprint1Scoreboard />
+        <SprintScorecard sprint={activeSprint} />
       </div>
     </div>
   )

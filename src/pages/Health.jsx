@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useApp } from '../store/AppContext.jsx'
 import { todayISO, formatDate, isMonday } from '../utils/dateUtils.js'
+import { SectionView } from '../components/SopSection.jsx'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function confirm(msg) { return window.confirm(msg) }
@@ -154,11 +156,20 @@ function WeightSection() {
 // ('mg' grid section) so this log never drifts out of sync with the SOP.
 function WorkoutSection() {
   const { state, dispatch } = useApp()
+  const [scheduleEditMode, setScheduleEditMode] = useState(false)
 
   const morningSOP = (state.sops || []).find(s => s.id === 'morning')
-  const gymSchedule = morningSOP?.sections?.find(sec => sec.id === 'mg')?.items || []
+  const gymSection = morningSOP?.sections?.find(sec => sec.id === 'mg')
+  const gymSchedule = gymSection?.items || []
   const workoutTypes = [...new Set(gymSchedule.map(g => g.secondary))]
   if (!workoutTypes.includes('Other')) workoutTypes.push('Other')
+
+  function updateGymSection(updatedSection) {
+    dispatch({
+      type: 'UPDATE_SOP',
+      payload: { ...morningSOP, sections: morningSOP.sections.map(s => s.id === updatedSection.id ? updatedSection : s) },
+    })
+  }
 
   const [form, setForm] = useState({ date: todayISO(), type: workoutTypes[0] || 'Other', completed: true, duration: 60, exercises: '', cardio: '', notes: '' })
   const [errors, setErrors] = useState({})
@@ -239,22 +250,23 @@ function WorkoutSection() {
         </div>
 
         <div className="card">
-          <div className="card-title">Gym Schedule — Road to Dunk Again</div>
-          <div className="form-hint" style={{ marginBottom: '.5rem' }}>Synced from the Morning Routine SOP — edit it there to update this schedule.</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-            {gymSchedule.length === 0
-              ? <div className="text-xs text-muted">No gym schedule found in the Morning Routine SOP.</div>
-              : gymSchedule.map(g => (
-                <div key={g.id} style={{ padding: '.4rem .6rem', background: 'var(--bg-2)', borderRadius: 4 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span className="font-bold text-sm">{g.primary}</span>
-                    <span className="text-xs text-blue">{g.secondary}</span>
-                  </div>
-                  <div className="text-xs text-muted">{g.meta}</div>
-                </div>
-              ))
-            }
-          </div>
+          {gymSection && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '-.5rem' }}>
+              <button className={`btn btn-sm ${scheduleEditMode ? 'btn-amber' : 'btn-ghost'}`} onClick={() => setScheduleEditMode(v => !v)}>
+                {scheduleEditMode ? '✓ Done Editing' : '✏️ Edit'}
+              </button>
+            </div>
+          )}
+          <div className="form-hint" style={{ marginBottom: '.5rem' }}>Synced with the Morning Routine SOP — edits here update it there too.</div>
+          {gymSection
+            ? <SectionView section={gymSection} sopColor={morningSOP.color} editMode={scheduleEditMode} onUpdateSection={updateGymSection} allowDeleteSection={false} />
+            : (
+              <div className="text-xs text-muted">
+                No gym schedule found. Add a "Grid" section named e.g. "Gym Schedule" (id it becomes searchable as) on the{' '}
+                <Link to="/sops/morning" className="text-blue">Morning Routine SOP</Link>.
+              </div>
+            )
+          }
         </div>
       </div>
 

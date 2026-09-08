@@ -145,6 +145,13 @@ export const INITIAL_DATA = {
       dates: 'May–July 2026',
       reviewDueDate: '2026-08-01',
       status: 'active',
+      objectives: [
+        { id: 'ob_weight',  label: 'Weight',                     target: '197 lb',   current: '',  done: false },
+        { id: 'ob_english', label: 'English study hours',        target: '60 hrs',   current: '',  done: false },
+        { id: 'ob_ai900',   label: 'AI-900 pass',                target: 'Pass',      current: '',  done: false },
+        { id: 'ob_sc300',   label: 'SC-300 pass',                target: 'Pass',      current: '',  done: false },
+        { id: 'ob_loans',   label: 'BHD + Banesco + Popular',    target: '$0 DOP',    current: '',  done: false },
+      ],
       milestones: [
         'Weight: 197 lb by Jul 31',
         'English: 60 hrs active study',
@@ -332,6 +339,12 @@ export const INITIAL_DATA = {
 
   // ── QUARTERLY BUSINESS REVIEWS ────────────────────────────────────────────
   quarterlyReviews: [],
+
+  // ── INVESTING (education / self-investment spend) ────────────────────────
+  investments: [],
+
+  // ── PROP FIRM ACCOUNTS ─────────────────────────────────────────────────────
+  propFirmAccounts: [],
 
   // ── DECISION LOG ──────────────────────────────────────────────────────────
   decisions: [
